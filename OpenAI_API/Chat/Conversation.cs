@@ -192,7 +192,7 @@ namespace OpenAI_API.Chat
 
 			StringBuilder responseStringBuilder = new StringBuilder();
 			ChatMessageRole responseRole = null;
-
+			bool setValue = false;
 			await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
 			{
 				if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
@@ -207,8 +207,26 @@ namespace OpenAI_API.Chat
 						responseStringBuilder.Append(deltaContent);
 						yield return deltaContent;
 					}
+					else
+					{
+						if (!setValue)
+						{
+                            MostRecentApiResult = res;
+							setValue = true;
+						}
+						else
+						{
+							if (delta.FunctionCall != null && !string.IsNullOrEmpty(delta.FunctionCall.Arguments))
+							{
+								MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.FunctionCall.Arguments;
+
+                            }
+							
+						}
+						
+					}
+					
 				}
-				MostRecentApiResult = res;
 			}
 
 			if (responseRole != null)

@@ -193,7 +193,56 @@ namespace OpenAI_Tests
 			}
         }
 
-		[Test]
+        [Test]
+        public async Task SummarizeFunctionStreamResult()
+        {
+            try
+            {
+                var api = new OpenAI_API.OpenAIAPI();
+                var functionList = new List<Function>
+                {
+                    BuildFunctionForTest()
+                };
+                var conversation = api.Chat.CreateConversation(new ChatRequest
+                {
+                    Model = Model.ChatGPTTurbo0613,
+                    Functions = functionList,
+                    Temperature = 0
+                });
+                conversation.AppendUserInput("What is the weather like in Boston?");
+				string response = string.Empty;
+
+                await foreach (var res in conversation.StreamResponseEnumerableFromChatbotAsync())
+                {
+                    response += res;
+                }
+
+                Assert.IsTrue(string.IsNullOrEmpty(response));
+				string param = "{\n  \"location\": \"Boston, MA\"\n}";
+				Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
+                Assert.IsTrue(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments == param);
+                var functionMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Function,
+                    Name = "get_current_weather",
+                    Content = "{\"temperature\": \"22\", \"unit\": \"celsius\", \"description\": \"sunny\"}"
+                };
+                conversation.AppendMessage(functionMessage);
+                response = await conversation.GetResponseFromChatbotAsync();
+
+                Assert.AreEqual("The current weather in Boston is sunny with a temperature of 22 degrees Celsius.", response);
+
+            }
+            catch (NullReferenceException ex)
+            {
+                Console.WriteLine(ex.Message, ex.StackTrace);
+                Assert.False(true);
+            }
+        }
+
+        [Test]
 		public void ChatWithNames()
 		{
 			var api = new OpenAI_API.OpenAIAPI();
