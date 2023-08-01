@@ -219,7 +219,10 @@ namespace OpenAI_API.Chat
 							if (delta.FunctionCall != null && !string.IsNullOrEmpty(delta.FunctionCall.Arguments))
 							{
 								MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.FunctionCall.Arguments;
-
+                            }
+							if(res.Choices.FirstOrDefault()?.FinishReason != null)
+							{
+								MostRecentApiResult.Choices.FirstOrDefault().FinishReason = res.Choices.FirstOrDefault()?.FinishReason;
                             }
 							
 						}
