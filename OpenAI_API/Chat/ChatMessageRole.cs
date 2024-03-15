@@ -34,8 +34,6 @@ namespace OpenAI_API.Chat
 					return ChatMessageRole.Assistant;
 				case "function":
 					return ChatMessageRole.Function;
-				case "tool":
-					return ChatMessageRole.Tool;
 				default:
 					return null;
 			}
@@ -60,13 +58,11 @@ namespace OpenAI_API.Chat
 		/// </summary>
 		public static ChatMessageRole Function { get; } = new ChatMessageRole("function");
 
-        public static ChatMessageRole Tool { get; } = new ChatMessageRole("tool");
-
-        /// <summary>
-        /// Gets the string value for this role to pass to the API
-        /// </summary>
-        /// <returns>The size as a string</returns>
-        public override string ToString()
+		/// <summary>
+		/// Gets the string value for this role to pass to the API
+		/// </summary>
+		/// <returns>The size as a string</returns>
+		public override string ToString()
 		{
 			return Value;
 		}
