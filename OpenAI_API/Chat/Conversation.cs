@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenAI_API.ChatFunctions;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -116,6 +117,7 @@ namespace OpenAI_API.Chat
         /// <param name="functionName">The name of the function for which the content has been generated as the result</param>
         /// <param name="content">The text content (usually JSON)</param>
         public void AppendFunctionMessage(string functionName, string content) => AppendMessage(new ChatMessage(ChatMessageRole.Function, content) { Name = functionName });
+		
 
 
         #region Non-streaming
@@ -193,6 +195,7 @@ namespace OpenAI_API.Chat
 			StringBuilder responseStringBuilder = new StringBuilder();
 			ChatMessageRole responseRole = null;
 			bool setValue = false;
+			MostRecentApiResult = null;
 			await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
 			{
 				if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
@@ -218,8 +221,13 @@ namespace OpenAI_API.Chat
 						{
 							if (delta.FunctionCall != null && !string.IsNullOrEmpty(delta.FunctionCall.Arguments))
 							{
+								if(MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall == null)
+                                    MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = new FunctionCall();
+
 								MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.FunctionCall.Arguments;
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Name += delta.FunctionCall.Name;
                             }
+							
 							if(res.Choices.FirstOrDefault()?.FinishReason != null)
 							{
 								MostRecentApiResult.Choices.FirstOrDefault().FinishReason = res.Choices.FirstOrDefault()?.FinishReason;
@@ -232,7 +240,7 @@ namespace OpenAI_API.Chat
 				}
 			}
 
-			if (responseRole != null)
+			if (responseRole != null && responseStringBuilder.Length > 0)
 			{
 				AppendMessage(responseRole, responseStringBuilder.ToString());
 			}
