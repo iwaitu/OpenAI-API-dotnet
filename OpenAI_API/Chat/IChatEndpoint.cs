@@ -21,14 +21,14 @@ namespace OpenAI_API.Chat
 		/// <param name="defaultChatRequestArgs">Allows setting the parameters to use when calling the ChatGPT API.  Can be useful for setting temperature, presence_penalty, and more.  See <see href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI documentation for a list of possible parameters to tweak.</see></param>
 		/// <returns>A <see cref="Conversation"/> which encapulates a back and forth chat betwen a user and an assistant.</returns>
 		Conversation CreateConversation(ChatRequest defaultChatRequestArgs = null);
+        Conversation CreateConversation(LLamaChatRequest defaultChatRequestArgs = null);
 
-
-		/// <summary>
-		/// Ask the API to complete the request using the specified parameters. This is non-streaming, so it will wait until the API returns the full result. Any non-specified parameters will fall back to default values specified in <see cref="DefaultChatRequestArgs"/> if present.
-		/// </summary>
-		/// <param name="request">The request to send to the API.</param>
-		/// <returns>Asynchronously returns the completion result. Look in its <see cref="ChatResult.Choices"/> property for the results.</returns>
-		Task<ChatResult> CreateChatCompletionAsync(ChatRequest request);
+        /// <summary>
+        /// Ask the API to complete the request using the specified parameters. This is non-streaming, so it will wait until the API returns the full result. Any non-specified parameters will fall back to default values specified in <see cref="DefaultChatRequestArgs"/> if present.
+        /// </summary>
+        /// <param name="request">The request to send to the API.</param>
+        /// <returns>Asynchronously returns the completion result. Look in its <see cref="ChatResult.Choices"/> property for the results.</returns>
+        Task<ChatResult> CreateChatCompletionAsync(ChatRequest request);
 
 		/// <summary>
 		/// Ask the API to complete the request using the specified parameters. This is non-streaming, so it will wait until the API returns the full result. Any non-specified parameters will fall back to default values specified in <see cref="DefaultChatRequestArgs"/> if present.

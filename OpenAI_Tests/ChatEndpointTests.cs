@@ -133,7 +133,7 @@ namespace OpenAI_Tests
 		{
 			var api = new OpenAI_API.OpenAIAPI();
 
-			var chat = api.Chat.CreateConversation();
+			var chat = api.Chat.CreateConversation(new ChatRequest());
 			chat.Model = model;
 			chat.RequestParameters.Temperature = 0;
 
@@ -198,7 +198,8 @@ namespace OpenAI_Tests
         {
             try
             {
-                var api = new OpenAI_API.OpenAIAPI();
+                var api = new OpenAI_API.OpenAIAPI("0");
+				api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
                 var functionList = new List<Function>
                 {
                     BuildFunctionForTest()
@@ -243,11 +244,62 @@ namespace OpenAI_Tests
         }
 
         [Test]
+        public async Task SummarizeLLamaFunctionStreamResult()
+        {
+            try
+            {
+                var api = new OpenAI_API.OpenAIAPI("0");
+                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
+                var functionList = new List<LLamaFunction>
+                {
+                    BuildLLamaFunctionForTest()
+                };
+				var llamarequest = new LLamaChatRequest
+				{
+					Model = Model.ChatGPTTurbo0613,
+					Functions = functionList,
+					Temperature = 0
+				};
+                var conversation = api.Chat.CreateConversation(llamarequest);
+                conversation.AppendUserInput("What is the weather like in Boston?");
+                string response = string.Empty;
+
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                {
+                    response += res;
+                }
+
+                Assert.IsTrue(string.IsNullOrEmpty(response));
+                string param = "{\n  \"location\": \"Boston\"\n}";
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
+                Assert.IsTrue(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments == param);
+                var functionMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Function,
+                    Name = "get_current_weather",
+                    Content = "{\"temperature\": \"22\", \"unit\": \"celsius\", \"description\": \"sunny\"}"
+                };
+                conversation.AppendMessage(functionMessage);
+                response = await conversation.GetResponseFromChatbotAsync();
+
+                Assert.AreEqual("The current weather in Boston is sunny with a temperature of 22 degrees Celsius.", response);
+
+            }
+            catch (NullReferenceException ex)
+            {
+                Console.WriteLine(ex.Message, ex.StackTrace);
+                Assert.False(true);
+            }
+        }
+
+        [Test]
 		public void ChatWithNames()
 		{
 			var api = new OpenAI_API.OpenAIAPI();
 
-			var chat = api.Chat.CreateConversation();
+			var chat = api.Chat.CreateConversation(new ChatRequest());
 			chat.RequestParameters.Temperature = 0;
 
 			chat.AppendSystemMessage("You are the moderator in this workplace chat.  Answer any questions asked of the participants.");
@@ -299,7 +351,7 @@ namespace OpenAI_Tests
 		{
 			var api = new OpenAI_API.OpenAIAPI();
 
-			var chat = api.Chat.CreateConversation();
+			var chat = api.Chat.CreateConversation(new ChatRequest());
 			chat.RequestParameters.MaxTokens = 500;
 			chat.RequestParameters.Temperature = 0.2;
 			chat.Model = Model.ChatGPTTurbo;
@@ -329,7 +381,7 @@ namespace OpenAI_Tests
 		{
             var parameters = new JObject
             {
-                ["type"] = "object",
+                ["type"] = "function",
                 ["required"] = new JArray("location"),
                 ["properties"] = new JObject
                 {
@@ -351,5 +403,37 @@ namespace OpenAI_Tests
 
 			return new Function(functionName, functionDescription, parameters);
         }
-	}
+
+        public static LLamaFunction BuildLLamaFunctionForTest()
+        {
+            var parameters = new JObject
+            {
+                ["type"] = "function",
+                ["required"] = new JArray("location"),
+                ["properties"] = new JObject
+                {
+                    ["location"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "The city and state, e.g. San Francisco, CA"
+                    },
+                    ["unit"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["enum"] = new JArray("celsius", "fahrenheit")
+                    }
+                }
+            };
+
+            var functionName = "get_current_weather";
+            var functionDescription = "Gets the current weather in a given location";
+
+            var func = new Function(functionName, functionDescription, parameters);
+			return new LLamaFunction
+			{
+				Function = func,
+				Type = "function"
+			};
+        }
+    }
 }

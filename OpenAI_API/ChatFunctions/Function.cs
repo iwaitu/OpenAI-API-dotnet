@@ -97,5 +97,15 @@ namespace OpenAI_API.ChatFunctions
         public Function()
         {
         }
+
     }
+
+    public class LLamaFunction
+    {
+        [JsonProperty("type", Required = Required.Always)]
+        public string Type { get; set; }
+        [JsonProperty("function", Required = Required.Always)]
+        public Function Function { get; set; }
+    }
+
 }

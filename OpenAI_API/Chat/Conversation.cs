@@ -25,10 +25,12 @@ namespace OpenAI_API.Chat
 		/// </summary>
 		public ChatRequest RequestParameters { get; private set; }
 
-		/// <summary>
-		/// Specifies the model to use for ChatGPT requests.  This is just a shorthand to access <see cref="RequestParameters"/>.Model
-		/// </summary>
-		public OpenAI_API.Models.Model Model
+        public LLamaChatRequest LLamaRequestParameters { get; private set; }
+
+        /// <summary>
+        /// Specifies the model to use for ChatGPT requests.  This is just a shorthand to access <see cref="RequestParameters"/>.Model
+        /// </summary>
+        public OpenAI_API.Models.Model Model
 		{
 			get
 			{
@@ -65,10 +67,24 @@ namespace OpenAI_API.Chat
 			RequestParameters.Stream = false;
 		}
 
-		/// <summary>
-		/// A list of messages exchanged so far.  Do not modify this list directly.  Instead, use <see cref="AppendMessage(ChatMessage)"/>, <see cref="AppendUserInput(string)"/>, <see cref="AppendSystemMessage(string)"/>, or <see cref="AppendExampleChatbotOutput(string)"/>.
-		/// </summary>
-		public IReadOnlyList<ChatMessage> Messages { get => _Messages; }
+        public Conversation(ChatEndpoint endpoint, OpenAI_API.Models.Model model = null, LLamaChatRequest defaultChatRequestArgs = null)
+        {
+            LLamaRequestParameters = new LLamaChatRequest(defaultChatRequestArgs);
+            if (model != null)
+                LLamaRequestParameters.Model = model;
+            if (LLamaRequestParameters.Model == null)
+                LLamaRequestParameters.Model = Models.Model.ChatGPTTurbo;
+
+            _Messages = new List<ChatMessage>();
+            _endpoint = endpoint;
+            LLamaRequestParameters.NumChoicesPerMessage = 1;
+            LLamaRequestParameters.Stream = false;
+        }
+
+        /// <summary>
+        /// A list of messages exchanged so far.  Do not modify this list directly.  Instead, use <see cref="AppendMessage(ChatMessage)"/>, <see cref="AppendUserInput(string)"/>, <see cref="AppendSystemMessage(string)"/>, or <see cref="AppendExampleChatbotOutput(string)"/>.
+        /// </summary>
+        public IReadOnlyList<ChatMessage> Messages { get => _Messages; }
 		private List<ChatMessage> _Messages;
 
 		/// <summary>
@@ -143,11 +159,28 @@ namespace OpenAI_API.Chat
 			return null;
 		}
 
-		/// <summary>
-		/// OBSOLETE: GetResponseFromChatbot() has been renamed to <see cref="GetResponseFromChatbotAsync"/> to follow .NET naming guidelines.  This alias will be removed in a future version.
-		/// </summary>
-		/// <returns>The string of the response from the chatbot API</returns>
-		[Obsolete("Conversation.GetResponseFromChatbot() has been renamed to GetResponseFromChatbotAsync to follow .NET naming guidelines.  Please update any references to GetResponseFromChatbotAsync().  This alias will be removed in a future version.", false)]
+        public async Task<string> GetResponseFromLLamaChatbotAsync()
+        {
+            LLamaChatRequest req = new LLamaChatRequest(LLamaRequestParameters);
+            req.Messages = _Messages.ToList();
+
+            var res = await _endpoint.CreateChatCompletionAsync(req);
+            MostRecentApiResult = res;
+
+            if (res.Choices.Count > 0)
+            {
+                var newMsg = res.Choices[0].Message;
+                AppendMessage(newMsg);
+                return newMsg.Content;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// OBSOLETE: GetResponseFromChatbot() has been renamed to <see cref="GetResponseFromChatbotAsync"/> to follow .NET naming guidelines.  This alias will be removed in a future version.
+        /// </summary>
+        /// <returns>The string of the response from the chatbot API</returns>
+        [Obsolete("Conversation.GetResponseFromChatbot() has been renamed to GetResponseFromChatbotAsync to follow .NET naming guidelines.  Please update any references to GetResponseFromChatbotAsync().  This alias will be removed in a future version.", false)]
 		public Task<string> GetResponseFromChatbot() => GetResponseFromChatbotAsync();
 
 
@@ -246,6 +279,64 @@ namespace OpenAI_API.Chat
 			}
 		}
 
-		#endregion
-	}
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromLLamaChatbotAsync()
+        {
+            var req = new LLamaChatRequest(LLamaRequestParameters);
+            req.Messages = _Messages.ToList();
+
+            StringBuilder responseStringBuilder = new StringBuilder();
+            ChatMessageRole responseRole = null;
+            bool setValue = false;
+            MostRecentApiResult = null;
+            await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
+            {
+                if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
+                {
+                    if (delta.Role != null)
+                        responseRole = delta.Role;
+
+                    string deltaContent = delta.Content;
+
+                    if (!string.IsNullOrEmpty(deltaContent) && !setValue)
+                    {
+                        responseStringBuilder.Append(deltaContent);
+                        yield return deltaContent;
+                    }
+                    else
+                    {
+                        if (!setValue)
+                        {
+                            MostRecentApiResult = res;
+                            setValue = true;
+                        }
+                        else
+                        {
+                            if (delta.FunctionCall != null && !string.IsNullOrEmpty(delta.FunctionCall.Arguments))
+                            {
+                                if (MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall == null)
+                                    MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = new FunctionCall();
+
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.FunctionCall.Arguments;
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Name += delta.FunctionCall.Name;
+                            }
+
+                            if (res.Choices.FirstOrDefault()?.FinishReason != null)
+                            {
+                                MostRecentApiResult.Choices.FirstOrDefault().FinishReason = res.Choices.FirstOrDefault()?.FinishReason;
+                            }
+
+                        }
+
+                    }
+
+                }
+            }
+
+            if (responseRole != null && responseStringBuilder.Length > 0)
+            {
+                AppendMessage(responseRole, responseStringBuilder.ToString());
+            }
+        }
+        #endregion
+    }
 }
