@@ -133,7 +133,8 @@ namespace OpenAI_API.Chat
         /// <param name="functionName">The name of the function for which the content has been generated as the result</param>
         /// <param name="content">The text content (usually JSON)</param>
         public void AppendFunctionMessage(string functionName, string content) => AppendMessage(new ChatMessage(ChatMessageRole.Function, content) { Name = functionName });
-		
+        public void AppendToolMessage(string functionName, string content) => AppendMessage(new ChatMessage(ChatMessageRole.Tool, content) { Name = functionName });
+
 
 
         #region Non-streaming
