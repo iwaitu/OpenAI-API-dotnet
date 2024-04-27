@@ -128,12 +128,18 @@ namespace OpenAI_API.Chat
 		/// <param name="content">Text content written by a developer to help give examples of desired behavior</param>
 		public void AppendExampleChatbotOutput(string content) => this.AppendMessage(new ChatMessage(ChatMessageRole.Assistant, content));
         /// <summary>
-        /// Creates and appends a <see cref="ChatMessage"/> to the chat history with the Role of <see cref="ChatMessageRole.Function"/>.  The function message is a response to a request from the system for output from a predefined function.
+        /// openai，chatglm3 专用，创建并附加一个<see cref="ChatMessage"/>到聊天历史记录，角色为<see cref="ChatMessageRole.Function"/>。function call 后返回的结果。
+		/// llama3 模型时，则用来添加一条function call 声明。因为 llama3 模型的Message数量必须为2的倍数，所以执行function call 需要按顺序先添加一条声明，再添加一条返回结果。
         /// </summary>
         /// <param name="functionName">The name of the function for which the content has been generated as the result</param>
         /// <param name="content">The text content (usually JSON)</param>
         public void AppendFunctionMessage(string functionName, string content) => AppendMessage(new ChatMessage(ChatMessageRole.Function, content) { Name = functionName });
-        public void AppendToolMessage(string functionName, string content) => AppendMessage(new ChatMessage(ChatMessageRole.Tool, content) { Name = functionName });
+        /// <summary>
+		/// llama3 专用，创建并附加一个<see cref="ChatMessage"/>到聊天历史记录，角色为<see cref="ChatMessageRole.Tool"/>。工具消息是执行function call 后返回的结果。
+		/// </summary>
+		/// <param name="functionName"></param>
+		/// <param name="content"></param>
+		public void AppendToolMessage(string functionName, string content) => AppendMessage(new ChatMessage(ChatMessageRole.Tool, content) { Name = functionName });
 
 
 
