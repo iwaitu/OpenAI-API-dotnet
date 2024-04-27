@@ -295,6 +295,7 @@ namespace OpenAI_API.Chat
             ChatMessageRole responseRole = null;
             bool setValue = false;
             MostRecentApiResult = null;
+			var buffer_msg = string.Empty;
             await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
             {
                 if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
@@ -303,8 +304,8 @@ namespace OpenAI_API.Chat
                         responseRole = delta.Role;
 
                     string deltaContent = delta.Content;
-
-                    if (!string.IsNullOrEmpty(deltaContent) && !setValue)
+					buffer_msg+= deltaContent;
+                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("Action:"))
                     {
                         responseStringBuilder.Append(deltaContent);
                         yield return deltaContent;

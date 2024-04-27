@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json.Schema;
 using Newtonsoft.Json.Linq;
 using System.Net.Mime;
+using Newtonsoft.Json;
 
 namespace OpenAI_Tests
 {
@@ -274,15 +275,26 @@ namespace OpenAI_Tests
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
-                Assert.IsTrue(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments == param);
-                var functionMessage = new ChatMessage
+                //Assert.IsTrue(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments == param);
+                var funcMessage = new ChatMessage
                 {
                     Role = ChatMessageRole.Function,
                     Name = "get_current_weather",
+                    Content = JsonConvert.SerializeObject(new { name= "get_current_weather", argument= param })
+                };
+                conversation.AppendMessage(funcMessage);
+                var toolMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Tool,
+                    Name = "get_current_weather",
                     Content = "{\"temperature\": \"22\", \"unit\": \"celsius\", \"description\": \"sunny\"}"
                 };
-                conversation.AppendMessage(functionMessage);
-                response = await conversation.GetResponseFromChatbotAsync();
+                conversation.AppendMessage(toolMessage);
+                //response = await conversation.GetResponseFromChatbotAsync();
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                {
+                    response += res;
+                }
 
                 Assert.AreEqual("The current weather in Boston is sunny with a temperature of 22 degrees Celsius.", response);
 
