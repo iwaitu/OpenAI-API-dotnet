@@ -304,8 +304,8 @@ namespace OpenAI_API.Chat
                         responseRole = delta.Role;
 
                     string deltaContent = delta.Content;
-					buffer_msg+= deltaContent;
-                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("Action:"))
+					buffer_msg+= string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
+                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("Action") && !buffer_msg.StartsWith(" Action"))
                     {
                         responseStringBuilder.Append(deltaContent);
                         yield return deltaContent;
