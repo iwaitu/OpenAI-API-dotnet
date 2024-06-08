@@ -346,6 +346,128 @@ namespace OpenAI_API.Chat
                 AppendMessage(responseRole, responseStringBuilder.ToString());
             }
         }
+
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromPhi3ChatbotAsync()
+        {
+            var req = new LLamaChatRequest(LLamaRequestParameters);
+            req.Messages = _Messages.ToList();
+
+            StringBuilder responseStringBuilder = new StringBuilder();
+            ChatMessageRole responseRole = null;
+            bool setValue = false;
+            MostRecentApiResult = null;
+            var buffer_msg = string.Empty;
+            await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
+            {
+                if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
+                {
+                    if (delta.Role != null)
+                        responseRole = delta.Role;
+
+                    string deltaContent = delta.Content;
+                    buffer_msg += string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
+                    //llama 3 70b 微调后，遇到function call 时，会先输出"```\n"
+                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("Action") && !buffer_msg.StartsWith(" Action"))
+                    {
+                        responseStringBuilder.Append(deltaContent);
+                        yield return deltaContent;
+                    }
+                    else
+                    {
+                        if (!setValue)
+                        {
+                            MostRecentApiResult = res;
+                            setValue = true;
+                        }
+                        else
+                        {
+                            if (delta.FunctionCall != null && !string.IsNullOrEmpty(delta.FunctionCall.Arguments))
+                            {
+                                if (MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall == null)
+                                    MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = new FunctionCall();
+
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.FunctionCall.Arguments;
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Name += delta.FunctionCall.Name;
+                            }
+
+                            if (res.Choices.FirstOrDefault()?.FinishReason != null)
+                            {
+                                MostRecentApiResult.Choices.FirstOrDefault().FinishReason = res.Choices.FirstOrDefault()?.FinishReason;
+                            }
+
+                        }
+
+                    }
+
+                }
+            }
+
+            if (responseRole != null && responseStringBuilder.Length > 0)
+            {
+                AppendMessage(responseRole, responseStringBuilder.ToString());
+            }
+        }
+
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromGLM4ChatbotAsync()
+        {
+            var req = new LLamaChatRequest(LLamaRequestParameters);
+            req.Messages = _Messages.ToList();
+
+            StringBuilder responseStringBuilder = new StringBuilder();
+            ChatMessageRole responseRole = null;
+            bool setValue = false;
+            MostRecentApiResult = null;
+            var buffer_msg = string.Empty;
+            await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
+            {
+                if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
+                {
+                    if (delta.Role != null)
+                        responseRole = delta.Role;
+
+                    string deltaContent = delta.Content;
+                    buffer_msg += string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
+                    //llama 3 70b 微调后，遇到function call 时，会先输出"```\n"
+                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("Action") && !buffer_msg.StartsWith(" Action"))
+                    {
+                        responseStringBuilder.Append(deltaContent);
+                        yield return deltaContent;
+                    }
+                    else
+                    {
+                        if (!setValue)
+                        {
+                            MostRecentApiResult = res;
+                            setValue = true;
+                        }
+                        else
+                        {
+                            if (delta.FunctionCall != null && !string.IsNullOrEmpty(delta.FunctionCall.Arguments))
+                            {
+                                if (MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall == null)
+                                    MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = new FunctionCall();
+
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.FunctionCall.Arguments;
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Name += delta.FunctionCall.Name;
+                            }
+
+                            if (res.Choices.FirstOrDefault()?.FinishReason != null)
+                            {
+                                MostRecentApiResult.Choices.FirstOrDefault().FinishReason = res.Choices.FirstOrDefault()?.FinishReason;
+                            }
+
+                        }
+
+                    }
+
+                }
+            }
+
+            if (responseRole != null && responseStringBuilder.Length > 0)
+            {
+                AppendMessage(responseRole, responseStringBuilder.ToString());
+            }
+        }
         #endregion
     }
 }

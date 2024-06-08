@@ -250,7 +250,7 @@ namespace OpenAI_Tests
             try
             {
                 var api = new OpenAI_API.OpenAIAPI("0");
-                api.ApiUrlFormat = "https://dc0embxrdu6t8q-8000.proxy.runpod.net/v1/{1}";
+                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
                 var functionList = new List<LLamaFunction>
                 {
                     BuildLLamaFunctionForTest()
@@ -259,10 +259,10 @@ namespace OpenAI_Tests
 				{
 					Model = Model.ChatGPTTurbo0613,
 					Functions = functionList,
-					Temperature = 0
+					Temperature = 1
 				};
                 var conversation = api.Chat.CreateConversation(llamarequest);
-                conversation.AppendUserInput("What is the weather like in Boston?");
+                conversation.AppendUserInput("告诉我波士顿今天的气温多少度，华氏");
                 string response = string.Empty;
 
                 await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
@@ -286,7 +286,7 @@ namespace OpenAI_Tests
                 var toolMessage = new ChatMessage
                 {
                     Role = ChatMessageRole.Tool,
-                    Name = "get_current_weather",
+                    Name = "get_current_weather:",
                     Content = "{\"temperature\": \"22\", \"unit\": \"celsius\", \"description\": \"sunny\"}"
                 };
                 conversation.AppendMessage(toolMessage);
