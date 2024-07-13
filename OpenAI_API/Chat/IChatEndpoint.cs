@@ -22,6 +22,7 @@ namespace OpenAI_API.Chat
 		/// <returns>A <see cref="Conversation"/> which encapulates a back and forth chat betwen a user and an assistant.</returns>
 		Conversation CreateConversation(ChatRequest defaultChatRequestArgs = null);
         Conversation CreateConversation(LLamaChatRequest defaultChatRequestArgs = null);
+        Conversation CreateConversation(GemmaChatRequest defaultChatRequestArgs = null);
 
         /// <summary>
         /// Ask the API to complete the request using the specified parameters. This is non-streaming, so it will wait until the API returns the full result. Any non-specified parameters will fall back to default values specified in <see cref="DefaultChatRequestArgs"/> if present.

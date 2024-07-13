@@ -119,7 +119,7 @@ namespace OpenAI_API.Chat
         /// A list of functions the model may generate JSON inputs for.
         /// </summary>
         [JsonProperty("tools")]
-        public List<LLamaFunction> Functions { get; set; }
+        public List<GemmaFunction> Functions { get; set; }
         /// <summary>
         /// Represents an optional field when sending a function prompt. 
         /// This field determines which function to call.

@@ -18,6 +18,7 @@ namespace OpenAI_API.Chat
 		/// </summary>
 		public ChatRequest DefaultChatRequestArgs { get; set; } = new ChatRequest() { Model = Model.ChatGPTTurbo };
         public LLamaChatRequest LLamaDefaultChatRequestArgs { get; set; } = new LLamaChatRequest() { Model = Model.ChatGPTTurbo };
+        public GemmaChatRequest GemmaDefaultChatRequestArgs { get; set; } = new GemmaChatRequest() { Model = Model.ChatGPTTurbo };
 
         /// <summary>
         /// The name of the endpoint, which is the final path segment in the API URL.  For example, "completions".
@@ -44,6 +45,11 @@ namespace OpenAI_API.Chat
         {
             return new Conversation(this, defaultChatRequestArgs: defaultChatRequestArgs ?? LLamaDefaultChatRequestArgs);
         }
+
+        public Conversation CreateConversation(GemmaChatRequest defaultChatRequestArgs = null)
+        {
+            return new Conversation(this, defaultChatRequestArgs: defaultChatRequestArgs ?? GemmaDefaultChatRequestArgs);
+        }
         #region Non-streaming
 
         /// <summary>
@@ -57,6 +63,11 @@ namespace OpenAI_API.Chat
 		}
 
         public async Task<ChatResult> CreateChatCompletionAsync(LLamaChatRequest request)
+        {
+            return await HttpPost<ChatResult>(postData: request);
+        }
+
+        public async Task<ChatResult> CreateChatCompletionAsync(GemmaChatRequest request)
         {
             return await HttpPost<ChatResult>(postData: request);
         }

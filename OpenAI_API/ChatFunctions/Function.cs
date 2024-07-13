@@ -108,4 +108,12 @@ namespace OpenAI_API.ChatFunctions
         public Function Function { get; set; }
     }
 
+    public class GemmaFunction
+    {
+        [JsonProperty("type", Required = Required.Always)]
+        public string Type { get; set; }
+        [JsonProperty("function", Required = Required.Always)]
+        public Function Function { get; set; }
+    }
+
 }

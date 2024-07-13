@@ -251,17 +251,17 @@ namespace OpenAI_Tests
             {
                 var api = new OpenAI_API.OpenAIAPI("0");
                 api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
-                var functionList = new List<LLamaFunction>
+                var functionList = new List<GemmaFunction>
                 {
-                    BuildLLamaFunctionForTest()
+                    BuilGemmaFunctionForTest()
                 };
-                var llamarequest = new LLamaChatRequest
+                var gemmarequest = new GemmaChatRequest
                 {
                     Model = Model.ChatGPTTurbo0613,
                     Functions = functionList,
                     Temperature = 1
                 };
-                var conversation = api.Chat.CreateConversation(llamarequest);
+                var conversation = api.Chat.CreateConversation(gemmarequest);
                 conversation.AppendUserInput("告诉我波士顿今天的气温多少度，华氏");
                 string response = string.Empty;
 
@@ -291,7 +291,7 @@ namespace OpenAI_Tests
                 };
                 conversation.AppendMessage(toolMessage);
                 //response = await conversation.GetResponseFromChatbotAsync();
-                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                await foreach (var res in conversation.StreamResponseEnumerableFromGemmaChatbotAsync())
                 {
                     response += res;
                 }
@@ -509,6 +509,38 @@ namespace OpenAI_Tests
 				Function = func,
 				Type = "function"
 			};
+        }
+
+        public static GemmaFunction BuilGemmaFunctionForTest()
+        {
+            var parameters = new JObject
+            {
+                ["type"] = "function",
+                ["required"] = new JArray("location"),
+                ["properties"] = new JObject
+                {
+                    ["location"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "The city and state, e.g. San Francisco, CA"
+                    },
+                    ["unit"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["enum"] = new JArray("celsius", "fahrenheit")
+                    }
+                }
+            };
+
+            var functionName = "get_current_weather";
+            var functionDescription = "Gets the current weather in a given location";
+
+            var func = new Function(functionName, functionDescription, parameters);
+            return new GemmaFunction
+            {
+                Function = func,
+                Type = "function"
+            };
         }
     }
 }

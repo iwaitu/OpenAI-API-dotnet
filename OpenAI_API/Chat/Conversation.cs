@@ -83,6 +83,20 @@ namespace OpenAI_API.Chat
             LLamaRequestParameters.Stream = false;
         }
 
+        public Conversation(ChatEndpoint endpoint, OpenAI_API.Models.Model model = null, GemmaChatRequest defaultChatRequestArgs = null)
+        {
+            GemmaRequestParameters = new GemmaChatRequest(defaultChatRequestArgs);
+            if (model != null)
+                GemmaRequestParameters.Model = model;
+            if (GemmaRequestParameters.Model == null)
+                GemmaRequestParameters.Model = Models.Model.ChatGPTTurbo;
+
+            _Messages = new List<ChatMessage>();
+            _endpoint = endpoint;
+            GemmaRequestParameters.NumChoicesPerMessage = 1;
+            GemmaRequestParameters.Stream = false;
+        }
+
         /// <summary>
         /// A list of messages exchanged so far.  Do not modify this list directly.  Instead, use <see cref="AppendMessage(ChatMessage)"/>, <see cref="AppendUserInput(string)"/>, <see cref="AppendSystemMessage(string)"/>, or <see cref="AppendExampleChatbotOutput(string)"/>.
         /// </summary>
