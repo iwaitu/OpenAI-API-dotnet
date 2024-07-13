@@ -251,7 +251,7 @@ namespace OpenAI_Tests
             {
                 var api = new OpenAI_API.OpenAIAPI("0");
                 api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
-                var functionList = new List<GemmaFunction>
+                var functionList = new List<OpenAIFunction>
                 {
                     BuilGemmaFunctionForTest()
                 };
@@ -314,7 +314,7 @@ namespace OpenAI_Tests
             {
                 var api = new OpenAI_API.OpenAIAPI("0");
                 api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
-                var functionList = new List<LLamaFunction>
+                var functionList = new List<OpenAIFunction>
                 {
                     BuildLLamaFunctionForTest()
                 };
@@ -511,7 +511,7 @@ namespace OpenAI_Tests
 			};
         }
 
-        public static GemmaFunction BuilGemmaFunctionForTest()
+        public static OpenAIFunction BuilGemmaFunctionForTest()
         {
             var parameters = new JObject
             {
