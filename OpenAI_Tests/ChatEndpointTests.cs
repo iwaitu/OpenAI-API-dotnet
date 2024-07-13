@@ -244,6 +244,69 @@ namespace OpenAI_Tests
             }
         }
 
+		[Test]
+        public async Task SummarizeGemmaFunctionStreamResult()
+        {
+            try
+            {
+                var api = new OpenAI_API.OpenAIAPI("0");
+                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
+                var functionList = new List<LLamaFunction>
+                {
+                    BuildLLamaFunctionForTest()
+                };
+                var llamarequest = new LLamaChatRequest
+                {
+                    Model = Model.ChatGPTTurbo0613,
+                    Functions = functionList,
+                    Temperature = 1
+                };
+                var conversation = api.Chat.CreateConversation(llamarequest);
+                conversation.AppendUserInput("告诉我波士顿今天的气温多少度，华氏");
+                string response = string.Empty;
+
+                await foreach (var res in conversation.StreamResponseEnumerableFromGemmaChatbotAsync())
+                {
+                    response += res;
+                }
+
+                //Assert.IsTrue(string.IsNullOrEmpty(response));
+                string param = "{\n  \"location\": \"Boston\"\n}";
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
+                //Assert.IsTrue(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments == param);
+                var funcMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Function,
+                    Name = "get_current_weather",
+                    Content = JsonConvert.SerializeObject(new { name = "get_current_weather", argument = param })
+                };
+                conversation.AppendMessage(funcMessage);
+                var toolMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Tool,
+                    Name = "get_current_weather:",
+                    Content = "{\"temperature\": \"22\", \"unit\": \"celsius\", \"description\": \"sunny\"}"
+                };
+                conversation.AppendMessage(toolMessage);
+                //response = await conversation.GetResponseFromChatbotAsync();
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                {
+                    response += res;
+                }
+
+                Assert.AreEqual("在波士顿，今天的气温是22摄氏度，天气晴朗。", response);
+
+            }
+            catch (NullReferenceException ex)
+            {
+                Console.WriteLine(ex.Message, ex.StackTrace);
+                Assert.False(true);
+            }
+        }
+
+
         [Test]
         public async Task SummarizeLLamaFunctionStreamResult()
         {

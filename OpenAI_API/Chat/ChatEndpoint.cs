@@ -187,6 +187,12 @@ namespace OpenAI_API.Chat
             return HttpStreamingRequest<ChatResult>(Url, HttpMethod.Post, request);
         }
 
+        public IAsyncEnumerable<ChatResult> StreamChatEnumerableAsync(GemmaChatRequest request)
+        {
+            request = new GemmaChatRequest(request) { Stream = true };
+            return HttpStreamingRequest<ChatResult>(Url, HttpMethod.Post, request);
+        }
+
         /// <summary>
         /// Ask the API to complete the message(s) using the specified request, and stream the results as they come in.
         /// If you are not using C# 8 supporting async enumerables or if you are using the .NET Framework, you may need to use <see cref="StreamChatAsync(ChatRequest, Action{ChatResult})"/> instead.
