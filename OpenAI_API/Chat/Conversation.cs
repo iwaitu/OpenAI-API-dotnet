@@ -1,4 +1,5 @@
-﻿using OpenAI_API.ChatFunctions;
+﻿using Newtonsoft.Json;
+using OpenAI_API.ChatFunctions;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -195,6 +196,21 @@ namespace OpenAI_API.Chat
                 var newMsg = res.Choices[0].Message;
                 AppendMessage(newMsg);
                 return newMsg.Content;
+            }
+            return null;
+        }
+
+        public async Task<string> GetResponseFromGemmaChatbotAsync()
+        {
+            GemmaChatRequest req = new GemmaChatRequest(GemmaRequestParameters);
+            req.Messages = _Messages.ToList();
+
+            var res = await _endpoint.CreateChatCompletionAsync(req);
+            MostRecentApiResult = res;
+
+            if (res.Choices.Count > 0)
+            {
+                return res.Choices[0].Message.Content;
             }
             return null;
         }

@@ -195,6 +195,65 @@ namespace OpenAI_Tests
         }
 
         [Test]
+        public async Task SummarizeGemmaFunctionResult()
+        {
+            try
+            {
+                var api = new OpenAI_API.OpenAIAPI("0");
+                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
+                var functionList = new List<OpenAIFunction>
+                {
+                    BuilGemmaFunctionForTest()
+                };
+                var conversation = api.Chat.CreateConversation(new GemmaChatRequest
+                {
+                    Model = "Gemma",
+                    Functions = functionList,
+                    Temperature = 1
+                });
+                conversation.AppendUserInput("What is the weather like in Boston?");
+
+                var response = await conversation.GetResponseFromGemmaChatbotAsync();
+
+                Assert.IsNull(response);
+                //如果使用function，返回的结果中会包含function_call
+                if(conversation.MostRecentApiResult.Choices.Count > 0)
+                {
+                    Assert.NotNull(conversation.MostRecentApiResult.Choices.FirstOrDefault().FinishReason == "function_call");
+                    Assert.NotNull(conversation.MostRecentApiResult.Choices.FirstOrDefault().Message.FunctionCall);
+                    Assert.NotNull(conversation.MostRecentApiResult.Choices.FirstOrDefault().Message.FunctionCall.Name, "get_current_weather");
+                    Assert.NotNull(conversation.MostRecentApiResult.Choices.FirstOrDefault().Message.FunctionCall.Arguments);
+                }
+                var funcMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Function,
+                    Name = "get_current_weather",
+                    //需要调用的function的参数
+                    Content = JsonConvert.SerializeObject(new { name = conversation.MostRecentApiResult.Choices.FirstOrDefault().Message.FunctionCall.Name, argument = conversation.MostRecentApiResult.Choices.FirstOrDefault().Message.FunctionCall.Arguments })
+                };
+                conversation.AppendMessage(funcMessage);
+
+
+                var toolMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Tool,
+                    Name = "get_current_weather",
+                    Content = "{\"temperature\": \"22\", \"unit\": \"celsius\", \"description\": \"sunny\"}"
+                };
+                conversation.AppendMessage(toolMessage);
+                response = await conversation.GetResponseFromGemmaChatbotAsync();
+
+                Assert.AreEqual("The current weather in Boston is sunny with a temperature of 22 degrees Celsius.", response);
+
+            }
+            catch (NullReferenceException ex)
+            {
+                Console.WriteLine(ex.Message, ex.StackTrace);
+                Assert.False(true);
+            }
+        }
+
+        [Test]
         public async Task SummarizeFunctionStreamResult()
         {
             try
@@ -257,7 +316,7 @@ namespace OpenAI_Tests
                 };
                 var gemmarequest = new GemmaChatRequest
                 {
-                    Model = Model.ChatGPTTurbo0613,
+                    Model = "Gemma",
                     Functions = functionList,
                     Temperature = 1
                 };
