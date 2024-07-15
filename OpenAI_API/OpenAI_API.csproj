@@ -10,7 +10,7 @@
 		<Copyright>This library is licensed CC-0, in the public domain</Copyright>
 		<PackageLicenseExpression>CC0-1.0</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/ivilson</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/OkGoDoIt/OpenAI-API-dotnet</RepositoryUrl>
+		<RepositoryUrl>https://github.com/ivilson</RepositoryUrl>
 		<PackageTags>OpenAI, AI, ML, API, ChatGPT, DALLE, GPT3, GPT-3, GPT4, GPT-4, DALL-E</PackageTags>
 		<Title>OpenAI API</Title>
 		<PackageReleaseNotes>
@@ -18,8 +18,8 @@
 		</PackageReleaseNotes>
 		<PackageId>OpenAI</PackageId>
 		<Version>1.7.5</Version>
-		<AssemblyVersion>1.7.5.0</AssemblyVersion>
-		<FileVersion>1.7.5.0</FileVersion>
+		<AssemblyVersion>1.7.6.0</AssemblyVersion>
+		<FileVersion>1.7.6.0</FileVersion>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<ProduceReferenceAssembly>True</ProduceReferenceAssembly>
