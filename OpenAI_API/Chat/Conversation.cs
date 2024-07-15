@@ -357,10 +357,10 @@ namespace OpenAI_API.Chat
                 }
             }
 
-            if (responseRole != null && responseStringBuilder.Length > 0)
-            {
-                AppendMessage(responseRole, responseStringBuilder.ToString());
-            }
+            //if (responseRole != null && responseStringBuilder.Length > 0)
+            //{
+            //    AppendMessage(responseRole, responseStringBuilder.ToString());
+            //}
         }
 
         public async IAsyncEnumerable<string> StreamResponseEnumerableFromLLamaChatbotAsync()

@@ -296,7 +296,7 @@ namespace OpenAI_Tests
                     response += res;
                 }
 
-                Assert.AreEqual("在波士顿，今天的气温是22摄氏度，天气晴朗。", response);
+                Assert.AreEqual("在波士顿，今天的温度是22摄氏度，天气晴朗。", response);
 
             }
             catch (NullReferenceException ex)
