@@ -372,7 +372,7 @@ namespace OpenAI_Tests
             try
             {
                 var api = new OpenAI_API.OpenAIAPI("0");
-                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
+                api.ApiUrlFormat = "http://llama3.k3s.nngeo.net/v1/{1}";
                 var functionList = new List<OpenAIFunction>
                 {
                     BuildLLamaFunctionForTest()
@@ -402,7 +402,7 @@ namespace OpenAI_Tests
                 {
                     Role = ChatMessageRole.Function,
                     Name = "get_current_weather",
-                    Content = JsonConvert.SerializeObject(new { name= "get_current_weather", arguments= param })
+                    Content = JsonConvert.SerializeObject(new { name= "get_current_weather", arguments = param })
                 };
                 conversation.AppendMessage(funcMessage);
                 var toolMessage = new ChatMessage

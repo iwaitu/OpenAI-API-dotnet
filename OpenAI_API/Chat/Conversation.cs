@@ -398,9 +398,8 @@ namespace OpenAI_API.Chat
 
                     string deltaContent = delta.Content;
 					buffer_msg+= string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
-                    //llama 3.1 70b 微调后，遇到function call 时，会先输出"```\n"，再输出"Action:"，所以要根据模型来调整，
-                    //llama 3.1 原版，遇到function call 时，会先输出"Action:" ，所以要根据模型来调整
-                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith(functionToken) )
+                    //llama 3 70b 微调后，遇到function call 时，会先输出"```\n"
+                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("``") && !buffer_msg.StartsWith("```\n") && !buffer_msg.StartsWith("```\nAction") && !buffer_msg.StartsWith(" Action"))
                     {
                         responseStringBuilder.Append(deltaContent);
                         yield return deltaContent;
