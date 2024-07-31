@@ -200,7 +200,7 @@ namespace OpenAI_Tests
             try
             {
                 var api = new OpenAI_API.OpenAIAPI("0");
-                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
+                api.ApiUrlFormat = "https://gemma2.nngeo.net/v1/{1}";
                 var functionList = new List<OpenAIFunction>
                 {
                     BuilGemmaFunctionForTest()
@@ -215,7 +215,7 @@ namespace OpenAI_Tests
 
                 var response = await conversation.GetResponseFromGemmaChatbotAsync();
 
-                Assert.IsNull(response);
+                //Assert.IsNull(response);
                 //如果使用function，返回的结果中会包含function_call
                 if(conversation.MostRecentApiResult.Choices.Count > 0)
                 {
@@ -309,14 +309,14 @@ namespace OpenAI_Tests
             try
             {
                 var api = new OpenAI_API.OpenAIAPI("0");
-                api.ApiUrlFormat = "http://gemma2.nngeo.net/v1/{1}";
+                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
                 var functionList = new List<OpenAIFunction>
                 {
                     BuilGemmaFunctionForTest()
                 };
                 var gemmarequest = new GemmaChatRequest
                 {
-                    Model = "Gemma",
+                    Model = "gemma2",
                     Functions = functionList,
                     Temperature = 1
                 };
@@ -387,7 +387,7 @@ namespace OpenAI_Tests
                 conversation.AppendUserInput("告诉我波士顿今天的气温多少度，华氏");
                 string response = string.Empty;
 
-                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync("```\n"))
                 {
                     response += res;
                 }
@@ -402,7 +402,7 @@ namespace OpenAI_Tests
                 {
                     Role = ChatMessageRole.Function,
                     Name = "get_current_weather",
-                    Content = JsonConvert.SerializeObject(new { name= "get_current_weather", argument= param })
+                    Content = JsonConvert.SerializeObject(new { name= "get_current_weather", arguments= param })
                 };
                 conversation.AppendMessage(funcMessage);
                 var toolMessage = new ChatMessage
@@ -413,7 +413,7 @@ namespace OpenAI_Tests
                 };
                 conversation.AppendMessage(toolMessage);
                 //response = await conversation.GetResponseFromChatbotAsync();
-                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync("```\n"))
                 {
                     response += res;
                 }

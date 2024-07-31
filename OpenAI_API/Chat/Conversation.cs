@@ -379,7 +379,7 @@ namespace OpenAI_API.Chat
             //}
         }
 
-        public async IAsyncEnumerable<string> StreamResponseEnumerableFromLLamaChatbotAsync()
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromLLamaChatbotAsync(string functionToken = "```\nAction:")
         {
             var req = new LLamaChatRequest(LLamaRequestParameters);
             req.Messages = _Messages.ToList();
@@ -398,8 +398,9 @@ namespace OpenAI_API.Chat
 
                     string deltaContent = delta.Content;
 					buffer_msg+= string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
-                    //llama 3 70b 微调后，遇到function call 时，会先输出"```\n"
-                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("```\n") && !buffer_msg.StartsWith("```\nAction") && !buffer_msg.StartsWith(" Action"))
+                    //llama 3.1 70b 微调后，遇到function call 时，会先输出"```\n"，再输出"Action:"，所以要根据模型来调整，
+                    //llama 3.1 原版，遇到function call 时，会先输出"Action:" ，所以要根据模型来调整
+                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith(functionToken) )
                     {
                         responseStringBuilder.Append(deltaContent);
                         yield return deltaContent;
@@ -434,10 +435,10 @@ namespace OpenAI_API.Chat
                 }
             }
 
-            if (responseRole != null && responseStringBuilder.Length > 0)
-            {
-                AppendMessage(responseRole, responseStringBuilder.ToString());
-            }
+            //if (responseRole != null && responseStringBuilder.Length > 0)
+            //{
+            //    AppendMessage(responseRole, responseStringBuilder.ToString());
+            //}
         }
 
         public async IAsyncEnumerable<string> StreamResponseEnumerableFromPhi3ChatbotAsync()
