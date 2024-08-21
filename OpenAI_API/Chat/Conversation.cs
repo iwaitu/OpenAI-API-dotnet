@@ -318,7 +318,7 @@ namespace OpenAI_API.Chat
 			}
 		}
 
-        public async IAsyncEnumerable<string> StreamResponseEnumerableFromGemmaChatbotAsync(string functionToken = "```\n")
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromGemmaChatbotAsync(string functionToken = "```\nAction:")
         {
             var req = new GemmaChatRequest(GemmaRequestParameters);
             req.Messages = _Messages.ToList();
@@ -336,9 +336,10 @@ namespace OpenAI_API.Chat
                         responseRole = delta.Role;
 
                     string deltaContent = delta.Content;
-                    buffer_msg += string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
-                    //llama 3 70b 微调后，遇到function call 时，会先输出"```\n"
-                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith(functionToken))
+                    if(buffer_msg.Length < functionToken.Length)
+                        buffer_msg += string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
+
+                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("```") && !buffer_msg.StartsWith("```\n") && !buffer_msg.StartsWith("```\nAction") && !buffer_msg.StartsWith(functionToken))
                     {
                         responseStringBuilder.Append(deltaContent);
                         yield return deltaContent;
@@ -397,9 +398,9 @@ namespace OpenAI_API.Chat
                         responseRole = delta.Role;
 
                     string deltaContent = delta.Content;
-					buffer_msg+= string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
-                    //llama 3 70b 微调后，遇到function call 时，会先输出"```\n"
-                    if(!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith(functionToken))
+                    if (buffer_msg.Length < functionToken.Length)
+                        buffer_msg += string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
+                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("```") && !buffer_msg.StartsWith("```\n") && !buffer_msg.StartsWith("```\nAction") && !buffer_msg.StartsWith(functionToken))
                     {
                          responseStringBuilder.Append(deltaContent);
                          yield return deltaContent;
