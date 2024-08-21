@@ -400,7 +400,7 @@ namespace OpenAI_API.Chat
                     string deltaContent = delta.Content;
                     if (buffer_msg.Length < functionToken.Length)
                         buffer_msg += string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
-                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("```") && !buffer_msg.StartsWith("```\n") && !buffer_msg.StartsWith("```\nAction") && !buffer_msg.StartsWith(functionToken))
+                    if (!string.IsNullOrEmpty(deltaContent) && !buffer_msg.StartsWith("``") && !buffer_msg.StartsWith("```\n") && !buffer_msg.StartsWith("```\nAction") && !buffer_msg.StartsWith(functionToken))
                     {
                          responseStringBuilder.Append(deltaContent);
                          yield return deltaContent;
