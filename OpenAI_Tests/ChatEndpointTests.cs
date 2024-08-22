@@ -375,7 +375,7 @@ namespace OpenAI_Tests
                 api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
                 var functionList = new List<OpenAIFunction>
                 {
-                    BuildLLamaFunctionForTest()
+                    BuildImageFunction()
                 };
 				var llamarequest = new LLamaChatRequest
 				{
@@ -384,7 +384,12 @@ namespace OpenAI_Tests
 					Temperature = 1
 				};
                 var conversation = api.Chat.CreateConversation(llamarequest);
-                conversation.AppendUserInput("告诉我波士顿今天的气温多少度，华氏");
+                conversation.AppendMessage(new ChatMessage
+                {
+                    Role = ChatMessageRole.System,
+                    Content = "### 你是一个智能助手，可以回答用户提出的各种问题.\n\n ### 使用markdown格式展示回复内容 \n\n ### 如果是用户请求的是图片，那么回复中首先使用 markdown 格式展示图片，然后换行回复其他内容"
+                });
+                conversation.AppendUserInput("画一张图，内容是：可爱的小猫在喝水");
                 string response = string.Empty;
 
                 await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync("```\n"))
@@ -393,7 +398,7 @@ namespace OpenAI_Tests
                 }
 
                 //Assert.IsTrue(string.IsNullOrEmpty(response));
-                string param = "{\n  \"location\": \"Boston\"\n}";
+                string param = "{\"Id\":\"01J5WGV9MFZ6Z9HKX4JARW0KYT\",\"Url\":\"https://chatapi.nngeo.net/api/image/66c6ed041f7689dd06ebe532\",\"Descriptions\":\"图片已生成并保存到服务器\"}";
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
@@ -401,25 +406,37 @@ namespace OpenAI_Tests
                 var funcMessage = new ChatMessage
                 {
                     Role = ChatMessageRole.Function,
-                    Name = "get_current_weather",
-                    Content = JsonConvert.SerializeObject(new { name= "get_current_weather", arguments = param })
+                    Name = "drawimage",
+                    Content = JsonConvert.SerializeObject(new { name= conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name, arguments = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments })
                 };
                 conversation.AppendMessage(funcMessage);
                 var toolMessage = new ChatMessage
                 {
                     Role = ChatMessageRole.Tool,
-                    Name = "get_current_weather:",
-                    Content = "{\"temperature\": \"22\", \"unit\": \"celsius\", \"description\": \"sunny\"}"
+                    Name = "drawimage:",
+                    Content = "{\"Id\":\"01J5WGV9MFZ6Z9HKX4JARW0KYT\",\"Url\":\"https://chatapi.nngeo.net/api/image/66c6ed041f7689dd06ebe532\",\"Descriptions\":\"使用 markdown 格式显示图片\"}"
                 };
                 conversation.AppendMessage(toolMessage);
                 //response = await conversation.GetResponseFromChatbotAsync();
+                response = string.Empty;
                 await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync("```\n"))
                 {
                     response += res;
                 }
+                conversation.AppendMessage(new ChatMessage
+                {
+                    Role = ChatMessageRole.Assistant,
+                    Content = response
+                });
+                Assert.NotNull(response);
 
-                Assert.AreEqual("The current weather in Boston is sunny with a temperature of 22 degrees Celsius.", response);
-
+                conversation.AppendUserInput("使用 markdown 将图片展示出来");
+                response = string.Empty;
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync("```\n"))
+                {
+                    response += res;
+                }
+                Assert.NotNull(response);
             }
             catch (NullReferenceException ex)
             {
@@ -568,6 +585,38 @@ namespace OpenAI_Tests
 				Function = func,
 				Type = "function"
 			};
+        }
+
+        public static OpenAIFunction BuildImageFunction()
+        {
+            var parameters = new JObject
+            {
+                ["type"] = "object",
+                ["required"] = new JArray("prompt"),
+                ["properties"] = new JObject
+                {
+                    ["prompt"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "生成图片的英文提示语"
+                    },
+                    ["description"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "生成图片的中文提示语"
+                    },
+                }
+            };
+
+            var functionName = "drawimage";
+            var functionDescription = "生成图片，并返回图片url 地址。提示词必须为英文，参考 midjourney 的提示词风格。";
+
+            var function = new Function(functionName, functionDescription, parameters);
+            return new OpenAIFunction
+            {
+                Type = "function",
+                Function = function
+            };
         }
 
         public static OpenAIFunction BuilGemmaFunctionForTest()
