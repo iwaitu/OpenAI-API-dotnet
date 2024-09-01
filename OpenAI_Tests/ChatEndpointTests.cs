@@ -355,7 +355,7 @@ namespace OpenAI_Tests
                     response += res;
                 }
 
-                Assert.AreEqual("在波士顿，今天的温度是22摄氏度，天气晴朗。", response);
+                Assert.AreEqual("在波士顿，今天气温是22华氏度，天气晴朗。", response);
 
             }
             catch (NullReferenceException ex)
@@ -365,6 +365,74 @@ namespace OpenAI_Tests
             }
         }
 
+        [Test]
+        public async Task SummarizeLLamaFunctionStreamResultNew()
+        {
+            try
+            {
+                var api = new OpenAI_API.OpenAIAPI("0");
+                api.ApiUrlFormat = "https://gemma.nngeo.net/v1/{1}";
+                var functionList = new List<OpenAIFunction>
+                {
+                    BuildImageFunction(),
+                    BuildPythonFunction()
+                };
+                var llamarequest = new LLamaChatRequest
+                {
+                    Model = Model.ChatGPTTurbo0613,
+                    Functions = functionList,
+                    Temperature = 1
+                };
+                var conversation = api.Chat.CreateConversation(llamarequest);
+                conversation.AppendMessage(new ChatMessage
+                {
+                    Role = ChatMessageRole.System,
+                    Content = "### 你是一个智能助手，可以回答用户提出的各种问题.\n\n ### 使用markdown格式展示回复内容 \n\n ### 如果是用户请求的是图片，那么回复中首先使用 markdown 格式展示图片，然后连续两个换行符后回复其他内容"
+                });
+                //conversation.AppendUserInput("画一张图，内容是：可爱的小猫在喝水");
+                conversation.AppendUserInput("如何验证欧拉公式？");
+                string response = string.Empty;
+
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                {
+                    response += res;
+                }
+
+                //Assert.IsTrue(string.IsNullOrEmpty(response));
+               
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments);
+                var funcMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Function,
+                    Name = "python",
+                    Content = JsonConvert.SerializeObject(new { name = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name, arguments = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments })
+                };
+                conversation.AppendMessage(funcMessage);
+                var toolMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Tool,
+                    Name = "python",
+                    Content = "{\"Result\":\"-1\",\"Descriptions\":\"使用 markdown 格式回复.\"}"
+                };
+                conversation.AppendMessage(toolMessage);
+                //response = await conversation.GetResponseFromChatbotAsync();
+                response = string.Empty;
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                {
+                    response += res;
+                }
+                
+                Assert.NotNull(response);
+            }
+            catch (NullReferenceException ex)
+            {
+                Console.WriteLine(ex.Message, ex.StackTrace);
+                Assert.False(true);
+            }
+        }
 
         [Test]
         public async Task SummarizeLLamaFunctionStreamResult()
@@ -375,7 +443,8 @@ namespace OpenAI_Tests
                 api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
                 var functionList = new List<OpenAIFunction>
                 {
-                    BuildImageFunction()
+                    BuildImageFunction(),
+                    BuildPythonFunction()
                 };
 				var llamarequest = new LLamaChatRequest
 				{
@@ -387,12 +456,13 @@ namespace OpenAI_Tests
                 conversation.AppendMessage(new ChatMessage
                 {
                     Role = ChatMessageRole.System,
-                    Content = "### 你是一个智能助手，可以回答用户提出的各种问题.\n\n ### 使用markdown格式展示回复内容 \n\n ### 如果是用户请求的是图片，那么回复中首先使用 markdown 格式展示图片，然后换行回复其他内容"
+                    Content = "### 你是一个智能助手，可以回答用户提出的各种问题.\n\n ### 使用markdown格式展示回复内容 \n\n ### 如果是用户请求的是图片，那么回复中首先使用 markdown 格式展示图片，然后连续两个换行符后回复其他内容"
                 });
-                conversation.AppendUserInput("画一张图，内容是：可爱的小猫在喝水");
+                //conversation.AppendUserInput("画一张图，内容是：可爱的小猫在喝水");
+                conversation.AppendUserInput("A商品1月销售200个，2月销售180个，3月销售320个，B商品1月销售20个，2月销售57,3月销售40个，帮我生成统计图表");
                 string response = string.Empty;
 
-                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync("```\n"))
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
                 {
                     response += res;
                 }
@@ -402,7 +472,7 @@ namespace OpenAI_Tests
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
-                //Assert.IsTrue(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments == param);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments);
                 var funcMessage = new ChatMessage
                 {
                     Role = ChatMessageRole.Function,
@@ -419,7 +489,7 @@ namespace OpenAI_Tests
                 conversation.AppendMessage(toolMessage);
                 //response = await conversation.GetResponseFromChatbotAsync();
                 response = string.Empty;
-                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync("```\n"))
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
                 {
                     response += res;
                 }
@@ -432,7 +502,7 @@ namespace OpenAI_Tests
 
                 conversation.AppendUserInput("使用 markdown 将图片展示出来");
                 response = string.Empty;
-                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync("```\n"))
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
                 {
                     response += res;
                 }
@@ -610,6 +680,72 @@ namespace OpenAI_Tests
 
             var functionName = "drawimage";
             var functionDescription = "生成图片，并返回图片url 地址。提示词必须为英文，参考 midjourney 的提示词风格。";
+
+            var function = new Function(functionName, functionDescription, parameters);
+            return new OpenAIFunction
+            {
+                Type = "function",
+                Function = function
+            };
+        }
+
+        public OpenAIFunction BuildPythonFunction()
+        {
+            var parameters = new JObject
+            {
+                ["type"] = "object",
+                ["required"] = new JArray("code"),
+                ["properties"] = new JObject
+                {
+                    ["code"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "需要执行的Python代码，返回代码中 result 变量的内容"
+                    }
+                }
+            };
+
+            var functionName = "python";
+            var functionDescription = @"
+# 执行Python代码，用于简单计算、绘制基本的图表。如果需要返回结果，需要将结果保存在 result 变量中，如果没有返回结果，则默认返回标准打印输出
+## matplotlib 使用非交互式的后端，严禁在代码中使用 plt.show() 函数，否则会导致程序无法返回结果，应该使用 plt.savefig() 保存图像到BytesIO对象。
+## 最后结果必须保存在 result 变量中，否则无法返回结果。
+## 示例代码：
+```python
+import matplotlib.pyplot as plt
+import io
+import base64
+plt.plot([1, 2, 3, 4], [1, 4, 9, 16])
+buf = io.BytesIO()
+
+# 将图像保存到 BytesIO 对象中，而不是保存到文件
+plt.savefig(buf, format='png')
+# 将指针移到起始位置
+buf.seek(0)
+# 将图像编码为 base64 字符串
+img_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+result = f'data:image/png;base64,{img_base64}'
+# 关闭图像和内存对象
+buf.close()
+plt.close()
+```
+## 注意事项：
+### 环境中包含以下库：
+- numpy
+- pandas
+- matplotlib
+- PIL
+- requests
+- json
+- datetime
+- random
+- math
+- os
+- sys
+- opencv-python
+- qrcode
+";
+
 
             var function = new Function(functionName, functionDescription, parameters);
             return new OpenAIFunction

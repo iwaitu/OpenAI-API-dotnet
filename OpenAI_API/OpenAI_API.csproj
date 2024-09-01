@@ -17,9 +17,9 @@
 			Added support for GPT4, streaming conversations with ChatGPT, IHttpClientFactory, and various bug fixes.
 		</PackageReleaseNotes>
 		<PackageId>OpenAI</PackageId>
-		<Version>1.7.5</Version>
-		<AssemblyVersion>1.7.6.0</AssemblyVersion>
-		<FileVersion>1.7.6.0</FileVersion>
+		<Version>1.7.8</Version>
+		<AssemblyVersion>1.7.8.0</AssemblyVersion>
+		<FileVersion>1.7.8.0</FileVersion>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<ProduceReferenceAssembly>True</ProduceReferenceAssembly>
