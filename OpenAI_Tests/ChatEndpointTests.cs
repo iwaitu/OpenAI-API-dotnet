@@ -374,7 +374,7 @@ namespace OpenAI_Tests
                 api.ApiUrlFormat = "https://gemma.nngeo.net/v1/{1}";
                 var functionList = new List<OpenAIFunction>
                 {
-                    BuildImageFunction(),
+                    //BuildImageFunction(),
                     BuildPythonFunction()
                 };
                 var llamarequest = new LLamaChatRequest
@@ -390,7 +390,7 @@ namespace OpenAI_Tests
                     Content = "### 你是一个智能助手，可以回答用户提出的各种问题.\n\n ### 使用markdown格式展示回复内容 \n\n ### 如果是用户请求的是图片，那么回复中首先使用 markdown 格式展示图片，然后连续两个换行符后回复其他内容"
                 });
                 //conversation.AppendUserInput("画一张图，内容是：可爱的小猫在喝水");
-                conversation.AppendUserInput("如何验证欧拉公式？");
+                conversation.AppendUserInput("帮我生成一个 hello.txt 文件，文件中打印1行 hello world");
                 string response = string.Empty;
 
                 await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
@@ -404,18 +404,19 @@ namespace OpenAI_Tests
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments);
+                string param = "{ \"code\": \"import io\\nimport base64\\n\\nbuffer = io.BytesIO()\\nfor i in range(3):\\n    buffer.write(b'hello world\\n')\\n\\nbuffer.seek(0)  # 回到缓冲区的开头\\ndata = buffer.read()\\nresult = 'data:application/octet-stream;base64,' + base64.b64encode(data).decode('utf-8')\\nbuffer.close()\"}";
                 var funcMessage = new ChatMessage
                 {
                     Role = ChatMessageRole.Function,
                     Name = "python",
-                    Content = JsonConvert.SerializeObject(new { name = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name, arguments = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments })
+                    Content = JsonConvert.SerializeObject(new { name = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name, arguments = param })
                 };
                 conversation.AppendMessage(funcMessage);
                 var toolMessage = new ChatMessage
                 {
                     Role = ChatMessageRole.Tool,
                     Name = "python",
-                    Content = "{\"Result\":\"-1\",\"Descriptions\":\"使用 markdown 格式回复.\"}"
+                    Content = "{\"Result\":\"Syntax error during AST parsing: unexpected character after line continuation character (<unknown>, line 1)\",\"Descriptions\":\"代码出现错误，请修正代码后重试。.\"}"
                 };
                 conversation.AppendMessage(toolMessage);
                 //response = await conversation.GetResponseFromChatbotAsync();
@@ -700,36 +701,70 @@ namespace OpenAI_Tests
                     ["code"] = new JObject
                     {
                         ["type"] = "string",
-                        ["description"] = "需要执行的Python代码，返回代码中 result 变量的内容"
+                        ["description"] = "需要执行的Python代码，将需要返回的内容保存到变量result"
                     }
                 }
             };
 
             var functionName = "python";
             var functionDescription = @"
-# 执行Python代码，用于简单计算、绘制基本的图表。如果需要返回结果，需要将结果保存在 result 变量中，如果没有返回结果，则默认返回标准打印输出
-## matplotlib 使用非交互式的后端，严禁在代码中使用 plt.show() 函数，否则会导致程序无法返回结果，应该使用 plt.savefig() 保存图像到BytesIO对象。
+# 执行Python代码，用于简单计算、绘制基本的图表或者流程图。如果需要返回结果，需要将结果保存在 result 变量中，如果没有返回结果，则默认返回标准打印输出
+## matplotlib 使用非交互式的后端，严禁在代码中使用 plt.show()或者 Image.show() 函数，否则会导致程序无法返回结果，应该使用 plt.savefig() 保存图像到BytesIO对象。
 ## 最后结果必须保存在 result 变量中，否则无法返回结果。
-## 示例代码：
+## 绘制统计图表示例代码：
 ```python
 import matplotlib.pyplot as plt
 import io
 import base64
-plt.plot([1, 2, 3, 4], [1, 4, 9, 16])
+months = ['January', 'February', 'March']
+sales_A = [200, 180, 320]
+sales_B = [20, 57, 40]
+plt.figure(figsize=(10, 6))
+plt.bar(months, sales_A, color='green', width=0.4, label='Product A')
+plt.bar(months, sales_B, color='blue', width=0.4, label='Product B', alpha=0.7)
+plt.xlabel('Month')
+plt.ylabel('Sales')
+plt.title('Sales of Products A and B (in units)')
 buf = io.BytesIO()
-
-# 将图像保存到 BytesIO 对象中，而不是保存到文件
 plt.savefig(buf, format='png')
-# 将指针移到起始位置
 buf.seek(0)
-# 将图像编码为 base64 字符串
 img_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-result = f'data:image/png;base64,{img_base64}'
-# 关闭图像和内存对象
+result = 'data:image/png;base64,' + img_base64
 buf.close()
 plt.close()
 ```
-## 注意事项：
+### 绘制流程图示例代码：
+```python
+from diagrams import Diagram
+from diagrams.aws.compute import EC2
+from diagrams.aws.network import ELB
+from diagrams.aws.database import RDS
+from PIL import Image
+
+with Diagram(""流程图"", show=False, outformat=""png"", filename=""temp""):
+    apply = EC2(""申请"")
+    audit = ELB(""审核"")
+    registration = RDS(""回岗登记"")
+
+    apply >> audit >> registration
+result = Image.open(""temp.png"")
+``
+### 生成文件：
+```python
+import io
+import base64
+
+buffer = io.BytesIO()
+for i in range(3):
+    buffer.write(b'hello world\n')
+
+buffer.seek(0)  # 回到缓冲区的开头
+data = buffer.read()
+result = 'data:application/octet-stream;base64,' + base64.b64encode(data).decode('utf-8')
+buffer.close()
+```
+
+## 注意事项：不要在代码中添加注释
 ### 环境中包含以下库：
 - numpy
 - pandas
@@ -744,6 +779,7 @@ plt.close()
 - sys
 - opencv-python
 - qrcode
+- diagrams
 ";
 
 
