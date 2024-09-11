@@ -436,6 +436,86 @@ namespace OpenAI_Tests
         }
 
         [Test]
+        public async Task SummarizeLLamaMultiTurnFunctionStreamResultNew()
+        {
+            try
+            {
+                var api = new OpenAI_API.OpenAIAPI("0");
+                //api.ApiUrlFormat = "https://gemma.nngeo.net/v1/{1}";
+                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
+                var functionList = new List<OpenAIFunction>
+                {
+                    //BuildImageFunction(),
+                    BuildPythonFunction(),
+                    BuildUrlTypeFunction(),
+                    BuildImageContentFunction()
+                };
+                var llamarequest = new LLamaChatRequest
+                {
+                    Model = Model.ChatGPTTurbo0613,
+                    Functions = functionList,
+                    Temperature = 0.7,
+                    TopP = 0.9
+                };
+                var conversation = api.Chat.CreateConversation(llamarequest);
+                conversation.AppendMessage(new ChatMessage
+                {
+                    Role = ChatMessageRole.System,
+                    Content = "### 你是一个智能助手，可以回答用户提出的各种问题.\n\n ### 使用markdown格式展示回复内容 \n\n ### 如果是用户请求的是图片，那么回复中首先使用 markdown 格式展示图片，然后连续两个换行符后回复其他内容"
+                });
+                //conversation.AppendUserInput("画一张图，内容是：可爱的小猫在喝水");
+                conversation.AppendUserInput("http://192.168.50.96:5261/api/attachfile/file?id=01J7ES9JPF0DAPJRX84DXC6G4H");
+                string response = string.Empty;
+
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                {
+                    response += res;
+                }
+
+                //Assert.IsTrue(string.IsNullOrEmpty(response));
+
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments);
+                
+                var funcMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Function,
+                    Name = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name,
+                    Content = JsonConvert.SerializeObject(new { name = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name, arguments = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments })
+                };
+                conversation.AppendMessage(funcMessage);
+                string param = "{ \"result\": \"这是一个图片 url ，可以使用 readimage 来读取内容\"}";
+                var toolMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Tool,
+                    Name = "checkurl",
+                    Content = param
+                };
+                conversation.AppendMessage(toolMessage);
+                //response = await conversation.GetResponseFromChatbotAsync();
+                response = string.Empty;
+                await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
+                {
+                    response += res;
+                }
+
+                Assert.IsNotNull(conversation.MostRecentApiResult.Choices[0].FinishReason);
+                Assert.AreEqual("function_call", conversation.MostRecentApiResult.Choices[0].FinishReason);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments);
+                Assert.AreEqual("readimage", conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name);
+
+            }
+            catch (NullReferenceException ex)
+            {
+                Console.WriteLine(ex.Message, ex.StackTrace);
+                Assert.False(true);
+            }
+        }
+
+        [Test]
         public async Task SummarizeLLamaFunctionStreamResult()
         {
             try
@@ -681,6 +761,69 @@ namespace OpenAI_Tests
 
             var functionName = "drawimage";
             var functionDescription = "生成图片，并返回图片url 地址。提示词必须为英文，参考 midjourney 的提示词风格。";
+
+            var function = new Function(functionName, functionDescription, parameters);
+            return new OpenAIFunction
+            {
+                Type = "function",
+                Function = function
+            };
+        }
+
+        public class imageContentParam
+        {
+            public string url { get; set; }
+        }
+        public OpenAIFunction BuildImageContentFunction()
+        {
+            var parameters = new JObject
+            {
+                ["type"] = "object",
+                ["required"] = new JArray("url"),
+                ["properties"] = new JObject
+                {
+                    ["url"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "图片的url地址"
+                    }
+                }
+            };
+
+            var functionName = "readimage";
+            var functionDescription = "获取图片的内容，返回图片的文字内容。";
+
+            var function = new Function(functionName, functionDescription, parameters);
+            return new OpenAIFunction
+            {
+                Type = "function",
+                Function = function
+            };
+        }
+
+        public class urlTypeParam
+        {
+            public string url { get; set; }
+        }
+
+        public OpenAIFunction BuildUrlTypeFunction()
+        {
+            var parameters = new JObject
+            {
+                ["type"] = "object",
+                ["required"] = new JArray("url"),
+                ["properties"] = new JObject
+                {
+                    ["url"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "需要检查的url地址"
+                    }
+                }
+            };
+
+            var functionName = "checkurl";
+            var functionDescription = "检查url地址的内容类型，返回内容类型。";
 
             var function = new Function(functionName, functionDescription, parameters);
             return new OpenAIFunction

@@ -393,7 +393,7 @@ namespace OpenAI_API.Chat
             var cacheStarted = false;
             
             // Define default function tokens if none are provided
-            functionTokens ??= new[] { "```\nAction:", "```tool_call\nAction:", "```tool_code\nAction:", "```python\nAction:" };
+            functionTokens ??= new[] { "Action:","```\nAction:", "```tool_call\nAction:", "```tool_code\nAction:", "```python\nAction:" };
             var maxFunctionTokenLength = functionTokens?.Max(ft => ft.Length) ?? 0;
 
             await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
@@ -410,6 +410,10 @@ namespace OpenAI_API.Chat
                     }
 
                     string deltaContent = delta.Content;
+                    if(res.Choices.FirstOrDefault()?.FinishReason == "function_call")
+                    {
+                        functionDetected = true;
+                    }
                     if (!string.IsNullOrEmpty(deltaContent))
                     {
                         // Check if caching should start (if we detect a newline in deltaContent)
@@ -476,7 +480,7 @@ namespace OpenAI_API.Chat
 
                         if (functionDetected && res.Choices.FirstOrDefault()?.FinishReason != null)
                         {
-                            MostRecentApiResult.Choices.FirstOrDefault().FinishReason = res.Choices.FirstOrDefault()?.FinishReason;
+                            MostRecentApiResult.Choices.FirstOrDefault().FinishReason = "function_call";
                         }
                     }
                 }
