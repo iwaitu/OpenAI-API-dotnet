@@ -441,8 +441,8 @@ namespace OpenAI_Tests
             try
             {
                 var api = new OpenAI_API.OpenAIAPI("0");
-                //api.ApiUrlFormat = "https://gemma.nngeo.net/v1/{1}";
-                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
+                api.ApiUrlFormat = "https://gemma.nngeo.net/v1/{1}";
+                //api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
                 var functionList = new List<OpenAIFunction>
                 {
                     //BuildImageFunction(),

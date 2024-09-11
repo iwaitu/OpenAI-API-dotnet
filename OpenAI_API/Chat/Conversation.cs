@@ -417,7 +417,7 @@ namespace OpenAI_API.Chat
                     if (!string.IsNullOrEmpty(deltaContent))
                     {
                         // Check if caching should start (if we detect a newline in deltaContent)
-                        if (deltaContent.Contains("\n") || deltaContent == "```")
+                        if (deltaContent.Contains("\n") || deltaContent == "```" || deltaContent == "```\n" || deltaContent == "Action")
                         {
                             cacheStarted = true;
                         }
@@ -435,7 +435,7 @@ namespace OpenAI_API.Chat
                                     var parts = buffer_msg.Split(new[] { functionToken }, 2, StringSplitOptions.None);
 
                                     // Output the part before the functionToken if it exists
-                                    if (!string.IsNullOrEmpty(parts[0]))
+                                    if (!string.IsNullOrEmpty(parts[0]) && parts[0]!="```\n")
                                     {
                                         yield return parts[0];
                                     }
