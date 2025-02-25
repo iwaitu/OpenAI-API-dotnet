@@ -29,6 +29,7 @@ namespace OpenAI_API.Chat
         public LLamaChatRequest LLamaRequestParameters { get; private set; }
 
         public GemmaChatRequest GemmaRequestParameters { get; private set; }
+        public QwenChatRequest QwenRequestParameters { get; private set; }
 
         /// <summary>
         /// Specifies the model to use for ChatGPT requests.  This is just a shorthand to access <see cref="RequestParameters"/>.Model
@@ -82,6 +83,20 @@ namespace OpenAI_API.Chat
             _endpoint = endpoint;
             LLamaRequestParameters.NumChoicesPerMessage = 1;
             LLamaRequestParameters.Stream = false;
+        }
+
+        public Conversation(ChatEndpoint endpoint, OpenAI_API.Models.Model model = null, QwenChatRequest defaultChatRequestArgs = null)
+        {
+            QwenRequestParameters = new QwenChatRequest(defaultChatRequestArgs);
+            if (model != null)
+                QwenRequestParameters.Model = model;
+            if (QwenRequestParameters.Model == null)
+                QwenRequestParameters.Model = Models.Model.ChatGPTTurbo;
+
+            _Messages = new List<ChatMessage>();
+            _endpoint = endpoint;
+            QwenRequestParameters.NumChoicesPerMessage = 1;
+            QwenRequestParameters.Stream = false;
         }
 
         public Conversation(ChatEndpoint endpoint, OpenAI_API.Models.Model model = null, GemmaChatRequest defaultChatRequestArgs = null)
@@ -318,6 +333,65 @@ namespace OpenAI_API.Chat
 			}
 		}
 
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromQwenChatbotAsync()
+        {
+            var req = new QwenChatRequest(QwenRequestParameters);
+            req.Messages = _Messages.ToList();
+
+            StringBuilder responseStringBuilder = new StringBuilder();
+            ChatMessageRole responseRole = null;
+            bool setValue = false;
+            MostRecentApiResult = null;
+            await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
+            {
+                if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
+                {
+                    if (delta.Role != null)
+                        responseRole = delta.Role;
+
+                    string deltaContent = delta.Content;
+
+                    if (!string.IsNullOrEmpty(deltaContent))
+                    {
+                        responseStringBuilder.Append(deltaContent);
+                        yield return deltaContent;
+                    }
+                    else
+                    {
+                        if (!setValue)
+                        {
+                            MostRecentApiResult = res;
+                            setValue = true;
+                        }
+                        else
+                        {
+                            if (delta.FunctionCall != null && !string.IsNullOrEmpty(delta.FunctionCall.Arguments))
+                            {
+                                if (MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall == null)
+                                    MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = new FunctionCall();
+
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.FunctionCall.Arguments;
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Name += delta.FunctionCall.Name;
+                            }
+
+                            if (res.Choices.FirstOrDefault()?.FinishReason != null)
+                            {
+                                MostRecentApiResult.Choices.FirstOrDefault().FinishReason = res.Choices.FirstOrDefault()?.FinishReason;
+                            }
+
+                        }
+
+                    }
+
+                }
+            }
+
+            if (responseRole != null && responseStringBuilder.Length > 0)
+            {
+                AppendMessage(responseRole, responseStringBuilder.ToString());
+            }
+        }
+
         public async IAsyncEnumerable<string> StreamResponseEnumerableFromGemmaChatbotAsync(string functionToken = "```\nAction:")
         {
             var req = new GemmaChatRequest(GemmaRequestParameters);
@@ -436,6 +510,119 @@ namespace OpenAI_API.Chat
 
                                     // Output the part before the functionToken if it exists
                                     if (!string.IsNullOrEmpty(parts[0]) && parts[0]!="```\n")
+                                    {
+                                        yield return parts[0];
+                                    }
+
+                                    // Mark functionToken detected and update the buffer with the remaining part after the functionToken
+                                    functionDetected = true;
+                                    buffer_msg = parts.Length > 1 ? parts[1] : string.Empty;
+
+                                    break; // Exit the loop once a function token is detected
+                                }
+                            }
+
+                            // If buffer_msg exceeds the length of the longest functionToken and no functionToken is detected
+                            if (!functionDetected && buffer_msg.Length > maxFunctionTokenLength)
+                            {
+                                // Wait for the next newline to push the buffer
+                                if (deltaContent.Contains("\n"))
+                                {
+                                    yield return buffer_msg;
+                                    buffer_msg = string.Empty;
+                                    cacheStarted = false;
+
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Output content directly if caching hasn't started
+                            yield return buffer_msg;
+                            buffer_msg = string.Empty;
+                        }
+
+                        // Handle function call accumulation
+                        if (functionDetected && delta.FunctionCall != null && !string.IsNullOrEmpty(delta.FunctionCall.Arguments))
+                        {
+                            if (MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall == null)
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = new FunctionCall();
+
+                            MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.FunctionCall.Arguments;
+                            MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Name += delta.FunctionCall.Name;
+                        }
+
+                        if (functionDetected && res.Choices.FirstOrDefault()?.FinishReason != null)
+                        {
+                            MostRecentApiResult.Choices.FirstOrDefault().FinishReason = "function_call";
+                        }
+                    }
+                }
+            }
+
+            // Handle any remaining content after processing the stream
+            if (!functionDetected && buffer_msg.Length > 0)
+            {
+                yield return buffer_msg;
+            }
+        }
+
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromQwenChatbotAsync(string[] functionTokens = null)
+        {
+            var req = new LLamaChatRequest(LLamaRequestParameters);
+            req.Messages = _Messages.ToList();
+
+            ChatMessageRole responseRole = null;
+            bool setValue = false;
+            MostRecentApiResult = null;
+            var buffer_msg = string.Empty;
+            var functionDetected = false;
+            var cacheStarted = false;
+
+            // Define default function tokens if none are provided
+            functionTokens ??= new[] { "Action:", "```\nAction:", "```tool_call\nAction:", "```tool_code\nAction:", "```python\nAction:" };
+            var maxFunctionTokenLength = functionTokens?.Max(ft => ft.Length) ?? 0;
+
+            await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
+            {
+                if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
+                {
+                    if (delta.Role != null)
+                        responseRole = delta.Role;
+
+                    if (!setValue)
+                    {
+                        MostRecentApiResult = res;
+                        setValue = true;
+                    }
+
+                    string deltaContent = delta.Content;
+                    if (res.Choices.FirstOrDefault()?.FinishReason == "function_call")
+                    {
+                        functionDetected = true;
+                    }
+                    if (!string.IsNullOrEmpty(deltaContent))
+                    {
+                        // Check if caching should start (if we detect a newline in deltaContent)
+                        if (deltaContent.Contains("\n") || deltaContent == "```" || deltaContent == "```\n" || deltaContent == "Action")
+                        {
+                            cacheStarted = true;
+                        }
+
+                        buffer_msg += deltaContent;
+
+                        if (cacheStarted)
+                        {
+                            // Start checking for function tokens only if caching has started
+                            foreach (var functionToken in functionTokens)
+                            {
+                                if (buffer_msg.Contains(functionToken) && !functionDetected)
+                                {
+                                    // Split the buffer around the functionToken
+                                    var parts = buffer_msg.Split(new[] { functionToken }, 2, StringSplitOptions.None);
+
+                                    // Output the part before the functionToken if it exists
+                                    if (!string.IsNullOrEmpty(parts[0]) && parts[0] != "```\n")
                                     {
                                         yield return parts[0];
                                     }
