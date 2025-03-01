@@ -1,10 +1,13 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using OpenAI_API.ChatFunctions;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using static System.Net.WebRequestMethods;
@@ -333,6 +336,65 @@ namespace OpenAI_API.Chat
 			}
 		}
 
+        
+        /// <summary>
+        /// 从输入字符串中提取 <tool_call> 标签之间的内容，
+        /// 并解析 JSON，提取 "name" 和 "arguments" 字段。
+        /// 如果匹配或解析失败，则返回 (null, null)。
+        /// </summary>
+        /// <param name="inputStr">输入字符串</param>
+        /// <returns>元组 (name, arguments)；若失败返回 (null, null)</returns>
+        private FunctionCall ProcessStreamChunkQwen(string inputStr)
+        {
+            var pattern = @"<tool_call>(.*?)</tool_call>";
+            var match = Regex.Match(inputStr, pattern, RegexOptions.Singleline);
+
+            if (match.Success)
+            {
+                string content = match.Groups[1].Value;
+
+                try
+                {
+                    // 尝试将内容解析为 JSON 对象
+                    var jsonContent = JObject.Parse(content);
+
+                    // 提取 "name" 和 "arguments"
+                    JToken nameToken = jsonContent["name"];
+                    JToken argumentsToken = jsonContent["arguments"];
+
+                    if (nameToken != null && argumentsToken != null)
+                    {
+                        string name = nameToken.ToString();
+
+                        // 将 arguments 转为 JSON 字符串，不转义非 ASCII 字符
+                        var settings = new JsonSerializerSettings
+                        {
+                            StringEscapeHandling = StringEscapeHandling.Default
+                        };
+                        string arguments = JsonConvert.SerializeObject(argumentsToken, settings);
+
+                        return new FunctionCall { Name = name, Arguments = arguments };
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+                catch (JsonReaderException)
+                {
+                    // JSON 解析失败
+                    return null;
+                }
+            }
+
+            // 未匹配到 <tool_call> 标签时返回 null
+            return null;
+        }
+
+        /// <summary>
+        /// 基于vllm 的qwen 模型，从聊天机器人获取响应，并将结果流式传递。支持stream function call
+        /// </summary>
+        /// <returns></returns>
         public async IAsyncEnumerable<string> StreamResponseEnumerableFromQwenChatbotAsync()
         {
             var req = new QwenChatRequest(QwenRequestParameters);
@@ -342,6 +404,7 @@ namespace OpenAI_API.Chat
             ChatMessageRole responseRole = null;
             bool setValue = false;
             MostRecentApiResult = null;
+            string buffer_msg = string.Empty;
             await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
             {
                 if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
@@ -350,9 +413,20 @@ namespace OpenAI_API.Chat
                         responseRole = delta.Role;
 
                     string deltaContent = delta.Content;
-
+                    buffer_msg += string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
                     if (!string.IsNullOrEmpty(deltaContent))
                     {
+                        if (buffer_msg.StartsWith("<tool_call>"))
+                        {
+                            var ret = ProcessStreamChunkQwen(buffer_msg);
+                            if (ret!= null && MostRecentApiResult != null)
+                            {
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = ret;
+                                MostRecentApiResult.Choices.FirstOrDefault().FinishReason = "function_call";
+                                yield return "";
+                            }
+                            continue;
+                        }
                         responseStringBuilder.Append(deltaContent);
                         yield return deltaContent;
                     }
@@ -363,24 +437,6 @@ namespace OpenAI_API.Chat
                             MostRecentApiResult = res;
                             setValue = true;
                         }
-                        else
-                        {
-                            if (delta.FunctionCall != null && !string.IsNullOrEmpty(delta.FunctionCall.Arguments))
-                            {
-                                if (MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall == null)
-                                    MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = new FunctionCall();
-
-                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.FunctionCall.Arguments;
-                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Name += delta.FunctionCall.Name;
-                            }
-
-                            if (res.Choices.FirstOrDefault()?.FinishReason != null)
-                            {
-                                MostRecentApiResult.Choices.FirstOrDefault().FinishReason = res.Choices.FirstOrDefault()?.FinishReason;
-                            }
-
-                        }
-
                     }
 
                 }

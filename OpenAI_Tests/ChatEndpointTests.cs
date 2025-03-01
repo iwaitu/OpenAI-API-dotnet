@@ -13,6 +13,8 @@ using Newtonsoft.Json.Schema;
 using Newtonsoft.Json.Linq;
 using System.Net.Mime;
 using Newtonsoft.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using Function = OpenAI_API.ChatFunctions.Function;
 
 namespace OpenAI_Tests
 {
@@ -379,9 +381,9 @@ namespace OpenAI_Tests
                 };
                 var qwenrequest = new QwenChatRequest
                 {
-                    Model = Model.ChatGPTTurbo0613,
+                    Model = Model.Qwen_25,
                     Functions = functionList,
-                    Temperature = 1
+                    Temperature = 0.7
                 };
                 var conversation = api.Chat.CreateConversation(qwenrequest);
                 conversation.AppendMessage(new ChatMessage
@@ -420,7 +422,8 @@ namespace OpenAI_Tests
                 var functionList = new List<OpenAIFunction>
                 {
                     //BuildImageFunction(),
-                    BuildPythonFunction()
+                    //BuildPythonFunction(),
+                    BuildLLamaFunctionForTest()
                 };
                 var llamarequest = new LLamaChatRequest
                 {
@@ -435,7 +438,7 @@ namespace OpenAI_Tests
                     Content = "### 你是一个智能助手，可以回答用户提出的各种问题.\n\n ### 使用markdown格式展示回复内容 \n\n ### 如果是用户请求的是图片，那么回复中首先使用 markdown 格式展示图片，然后连续两个换行符后回复其他内容"
                 });
                 //conversation.AppendUserInput("画一张图，内容是：可爱的小猫在喝水");
-                conversation.AppendUserInput("帮我生成一个 hello.txt 文件，文件中打印1行 hello world");
+                conversation.AppendUserInput("北京的天气如何？");
                 string response = string.Empty;
 
                 await foreach (var res in conversation.StreamResponseEnumerableFromLLamaChatbotAsync())
@@ -751,7 +754,7 @@ namespace OpenAI_Tests
 			return new Function(functionName, functionDescription, parameters);
         }
 
-        public static LLamaFunction BuildLLamaFunctionForTest()
+        public static OpenAIFunction BuildLLamaFunctionForTest()
         {
             var parameters = new JObject
             {
@@ -776,11 +779,11 @@ namespace OpenAI_Tests
             var functionDescription = "Gets the current weather in a given location";
 
             var func = new Function(functionName, functionDescription, parameters);
-			return new LLamaFunction
-			{
-				Function = func,
-				Type = "function"
-			};
+            return new OpenAIFunction
+            {
+                Type = "function",
+                Function = func
+            };
         }
 
         public static OpenAIFunction BuildImageFunction()

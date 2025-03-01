@@ -172,12 +172,13 @@ namespace OpenAI_API.Models
         ///  Snapshot of gpt-4 from June 13th 2023. This model allows the use of function calling as well as more reliable steering via the system message.
         /// </summary>
         public static Model GPT4_0613 => new Model("gpt-4-0613") { OwnedBy = "openai" };
-		/// <summary>
-		/// Gets more details about this Model from the API, specifically properties such as <see cref="OwnedBy"/> and permissions.
-		/// </summary>
-		/// <param name="api">An instance of the API with authentication in order to call the endpoint.</param>
-		/// <returns>Asynchronously returns an Model with all relevant properties filled in</returns>
-		public async Task<Model> RetrieveModelDetailsAsync(OpenAI_API.OpenAIAPI api)
+        public static Model Qwen_25 => new Model("/models/Qwen2.5-72B-Instruct-FP8") { OwnedBy = "openai" };
+        /// <summary>
+        /// Gets more details about this Model from the API, specifically properties such as <see cref="OwnedBy"/> and permissions.
+        /// </summary>
+        /// <param name="api">An instance of the API with authentication in order to call the endpoint.</param>
+        /// <returns>Asynchronously returns an Model with all relevant properties filled in</returns>
+        public async Task<Model> RetrieveModelDetailsAsync(OpenAI_API.OpenAIAPI api)
 		{
 			return await api.Models.RetrieveModelDetailsAsync(this.ModelID);
 		}
