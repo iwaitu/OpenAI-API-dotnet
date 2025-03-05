@@ -368,6 +368,41 @@ namespace OpenAI_Tests
         }
 
         [Test]
+
+        public async Task SummarizeR1FunctionStreamResult()
+        {
+            try
+            {
+                var api = new OpenAI_API.OpenAIAPI("sk-d032e4e7c92b488b9b921f69b1d69dcf");
+                api.ApiUrlFormat = "https://dashscope.aliyuncs.com/compatible-mode/v1/{1}";
+
+                var chatRequest = new ChatRequest
+                {
+                    Model = Model.DeepSeekR1,
+                    Temperature = 0.7
+                };
+                var conversation = api.Chat.CreateConversation(chatRequest);
+                conversation.AppendMessage(new ChatMessage
+                {
+                    Role = ChatMessageRole.System,
+                    Content = "### 你是南宁市不动产登记业务智能助手，可以帮助用户解答各种业务及相关法律法规问题."
+                });
+                conversation.AppendUserInput("我想知道南宁市的不动产登记流程");
+                string response = string.Empty;
+                await foreach (var res in conversation.StreamResponseEnumerableFromR1ChatbotAsync())
+                {
+                    response += res;
+                }
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        [Test]
         public async Task SummarizeQwenFunctionStreamResult()
         {
             try

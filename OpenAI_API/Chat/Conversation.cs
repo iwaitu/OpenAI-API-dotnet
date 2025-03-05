@@ -391,6 +391,45 @@ namespace OpenAI_API.Chat
             return null;
         }
 
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromR1ChatbotAsync()
+        {
+            var req = new ChatRequest(RequestParameters);
+            req.Messages = _Messages.ToList();
+            StringBuilder responseStringBuilder = new StringBuilder();
+            ChatMessageRole responseRole = null;
+            bool setValue = false;
+            MostRecentApiResult = null;
+            string buffer_msg = string.Empty;
+            await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
+            {
+                if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
+                {
+                    if (delta.Role != null)
+                        responseRole = delta.Role;
+
+                    if (!string.IsNullOrEmpty(delta.ReasoningContent))
+                    {
+                        yield return delta.ReasoningContent;
+                    } else if (!string.IsNullOrEmpty(delta.Content))
+                    {
+                        yield return delta.Content;
+                    }
+                    else
+                    {
+                        if (!setValue)
+                        {
+                            MostRecentApiResult = res;
+                            setValue = true;
+                        }
+                    }
+                }
+            }
+            if (responseRole != null && responseStringBuilder.Length > 0)
+            {
+                AppendMessage(responseRole, responseStringBuilder.ToString());
+            }
+        }
+
         /// <summary>
         /// 基于vllm 的qwen 模型，从聊天机器人获取响应，并将结果流式传递。支持stream function call
         /// </summary>
