@@ -68,5 +68,6 @@ namespace OpenAI_API.Chat
         public FunctionCall FunctionCall { get; set; }
 		[JsonProperty("reasoning_content")]
 		public string ReasoningContent { get; set; }
+		public bool Thinking { get; set; }
     }
 }

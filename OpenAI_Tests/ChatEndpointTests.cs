@@ -388,10 +388,20 @@ namespace OpenAI_Tests
                     Content = "### 你是南宁市不动产登记业务智能助手，可以帮助用户解答各种业务及相关法律法规问题."
                 });
                 conversation.AppendUserInput("我想知道南宁市的不动产登记流程");
-                string response = string.Empty;
+                string response = "<think>\n";
+                bool printEndThinking = false;
                 await foreach (var res in conversation.StreamResponseEnumerableFromR1ChatbotAsync())
                 {
+                    if( conversation.MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking ==false)
+                    {
+                        if(printEndThinking == false)
+                        {
+                            response += "\n</think>\n";
+                            printEndThinking = true;
+                        }
+                    }
                     response += res;
+                    
                 }
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
             }

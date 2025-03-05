@@ -409,9 +409,19 @@ namespace OpenAI_API.Chat
 
                     if (!string.IsNullOrEmpty(delta.ReasoningContent))
                     {
+                        MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking = true;
+                        MostRecentApiResult.Choices.FirstOrDefault().Delta.ReasoningContent += delta.ReasoningContent;
                         yield return delta.ReasoningContent;
                     } else if (!string.IsNullOrEmpty(delta.Content))
                     {
+                        if(MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking)
+                        {
+                            if (!string.IsNullOrEmpty(MostRecentApiResult.Choices.FirstOrDefault().Delta.ReasoningContent))
+                            {
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking = false;
+                            }
+                        }
+                        MostRecentApiResult.Choices.FirstOrDefault().Delta.Content += delta.Content;
                         yield return delta.Content;
                     }
                     else
