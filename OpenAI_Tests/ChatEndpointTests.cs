@@ -369,6 +369,63 @@ namespace OpenAI_Tests
 
         [Test]
 
+        public async Task SummarizeQwQFunctionStreamResult()
+        {
+            try
+            {
+                var api = new OpenAI_API.OpenAIAPI("0");
+                api.ApiUrlFormat = "http://localhost:8000/v1/{1}";
+                var functionList = new List<OpenAIFunction>
+                {
+                    //BuildImageFunction(),
+                    BuildPythonFunction()
+                };
+                var qwenrequest = new QwenChatRequest
+                {
+                    Model = Model.QwQ,
+                    Functions = functionList,
+                    Temperature = 0.7
+                };
+                var conversation = api.Chat.CreateConversation(qwenrequest);
+                conversation.AppendMessage(new ChatMessage
+                {
+                    Role = ChatMessageRole.System,
+                    Content = "### 你是一个智能助手，可以回答用户提出的各种问题.\n\n ### 使用markdown格式展示回复内容 \n\n ### 如果是用户请求的是图片，那么回复中首先使用 markdown 格式展示图片，然后连续两个换行符后回复其他内容"
+                });
+                //conversation.AppendUserInput("画一张图，内容是：可爱的小猫在喝水");
+                conversation.AppendUserInput("帮我生成一个 hello.txt 文件，文件中打印1行 hello world");
+                string response = string.Empty;
+                bool printEndThkning = false;
+                response += "思考中\n";
+                response += "<think>\n\n";
+                await foreach (var res in conversation.StreamResponseEnumerableFromQwQChatbotAsync())
+                {
+
+                    if (conversation.MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking == false)
+                    {
+                        if (!printEndThkning)
+                        {
+                            response += "\n</think>\n\n";
+                            printEndThkning = true;
+                        }
+                    }
+                    response += res;
+                }
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments);
+                Assert.True(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name == "python");
+            }
+            catch (NullReferenceException ex)
+            {
+                Console.WriteLine(ex.Message, ex.StackTrace);
+                Assert.False(true);
+            }
+        }
+
+        [Test]
+
         public async Task SummarizeR1FunctionStreamResult()
         {
             try

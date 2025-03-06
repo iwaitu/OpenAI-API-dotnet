@@ -175,6 +175,7 @@ namespace OpenAI_API.Models
         /// </summary>
         public static Model GPT4_0613 => new Model("gpt-4-0613") { OwnedBy = "openai" };
         public static Model Qwen_25 => new Model("qwen25") { OwnedBy = "nngeo" };
+        public static Model QwQ => new Model("qwq") { OwnedBy = "ivilson" };
         /// <summary>
         /// Gets more details about this Model from the API, specifically properties such as <see cref="OwnedBy"/> and permissions.
         /// </summary>

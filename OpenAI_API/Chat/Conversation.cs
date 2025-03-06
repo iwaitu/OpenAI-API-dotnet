@@ -497,6 +497,75 @@ namespace OpenAI_API.Chat
             }
         }
 
+        /// <summary>
+        /// 基于vllm 的qwen 模型，从聊天机器人获取响应，并将结果流式传递。支持stream function call
+        /// </summary>
+        /// <returns></returns>
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromQwQChatbotAsync()
+        {
+            var req = new QwenChatRequest(QwenRequestParameters);
+            req.Messages = _Messages.ToList();
+
+            StringBuilder responseStringBuilder = new StringBuilder();
+            ChatMessageRole responseRole = null;
+            bool setValue = false;
+            MostRecentApiResult = null;
+            string buffer_msg = string.Empty;
+            await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
+            {
+                if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
+                {
+                    if (delta.Role != null)
+                        responseRole = delta.Role;
+
+                    string deltaContent = delta.Content;
+                    if(buffer_msg.Length == 0 && MostRecentApiResult != null)
+                    {
+                        MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking = true;
+                    }
+                    buffer_msg += string.IsNullOrEmpty(deltaContent) ? "" : deltaContent;
+                    if (!string.IsNullOrEmpty(deltaContent))
+                    {
+                        
+                        int index = buffer_msg.IndexOf("<tool_call>");
+                        if (index>=0)
+                        {
+                            var ret = ProcessStreamChunkQwen(buffer_msg.Substring(index));
+                            if (ret != null && MostRecentApiResult != null)
+                            {
+                                MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = ret;
+                                MostRecentApiResult.Choices.FirstOrDefault().FinishReason = "function_call";
+                                yield return "";
+                            }
+                            continue;
+                        }
+                        if(deltaContent == "</think>")
+                        {
+                            MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking = false;
+                            yield return "";
+                            continue;
+                        }
+                        responseStringBuilder.Append(deltaContent);
+                        yield return deltaContent;
+                    }
+                    else
+                    {
+                        if (!setValue)
+                        {
+                            MostRecentApiResult = res;
+                            setValue = true;
+                        }
+                    }
+
+                }
+            }
+
+            if (responseRole != null && responseStringBuilder.Length > 0)
+            {
+                AppendMessage(responseRole, responseStringBuilder.ToString());
+            }
+        }
+
         public async IAsyncEnumerable<string> StreamResponseEnumerableFromGemmaChatbotAsync(string functionToken = "```\nAction:")
         {
             var req = new GemmaChatRequest(GemmaRequestParameters);
