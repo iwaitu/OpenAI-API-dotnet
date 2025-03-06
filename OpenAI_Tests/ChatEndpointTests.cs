@@ -367,8 +367,11 @@ namespace OpenAI_Tests
             }
         }
 
+        /// <summary>
+        /// 测试QwQ模型的对话流程
+        /// </summary>
+        /// <returns></returns>
         [Test]
-
         public async Task SummarizeQwQFunctionStreamResult()
         {
             try
@@ -416,6 +419,37 @@ namespace OpenAI_Tests
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall);
                 Assert.NotNull(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments);
                 Assert.True(conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name == "python");
+                var funcMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Function,
+                    Name = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name,
+                    Content = JsonConvert.SerializeObject(new { name = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name, arguments = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Arguments })
+                };
+                conversation.AppendMessage(funcMessage);
+                var toolMessage = new ChatMessage
+                {
+                    Role = ChatMessageRole.Tool,
+                    Name = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name,
+                    Content = "python代码执行文件生成完成,已保存到远程服务器，下载地址为： http://test.com/123 "
+                };
+                conversation.AppendMessage(toolMessage);
+                response += "思考中\n";
+                response += "<think>\n\n";
+                printEndThkning = false;
+                await foreach (var res in conversation.StreamResponseEnumerableFromQwQChatbotAsync())
+                {
+
+                    if (conversation.MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking == false)
+                    {
+                        if (!printEndThkning)
+                        {
+                            response += "\n</think>\n\n";
+                            printEndThkning = true;
+                        }
+                    }
+                    response += res;
+                }
+                Assert.NotNull(conversation.MostRecentApiResult.Choices[0]);
             }
             catch (NullReferenceException ex)
             {

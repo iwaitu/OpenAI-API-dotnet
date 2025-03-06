@@ -560,10 +560,6 @@ namespace OpenAI_API.Chat
                 }
             }
 
-            if (responseRole != null && responseStringBuilder.Length > 0)
-            {
-                AppendMessage(responseRole, responseStringBuilder.ToString());
-            }
         }
 
         public async IAsyncEnumerable<string> StreamResponseEnumerableFromGemmaChatbotAsync(string functionToken = "```\nAction:")
