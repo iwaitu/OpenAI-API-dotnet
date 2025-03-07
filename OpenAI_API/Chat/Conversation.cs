@@ -519,7 +519,6 @@ namespace OpenAI_API.Chat
                         responseRole = delta.Role;
 
                     string deltaContent = delta.Content;
-                    responseStringBuilder.Append(deltaContent);
                     if (delta.ToolCalls?.FirstOrDefault()?.Function != null && delta.ToolCalls?.FirstOrDefault()?.Function.Arguments != null )
                     {
                         if (MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall == null)
@@ -534,7 +533,11 @@ namespace OpenAI_API.Chat
 
                     }
 
-                    yield return deltaContent;
+                    if (!string.IsNullOrEmpty(deltaContent))
+                    {
+                        responseStringBuilder.Append(deltaContent);
+                        yield return deltaContent;
+                    }
                 }
             }
 
