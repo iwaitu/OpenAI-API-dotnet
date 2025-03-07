@@ -526,8 +526,11 @@ namespace OpenAI_API.Chat
                             MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = new FunctionCall();
 
                         MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.ToolCalls?.FirstOrDefault()?.Function.Arguments;
-                        if(delta.ToolCalls?.FirstOrDefault()?.Function.Name != null)
+                        if (delta.ToolCalls?.FirstOrDefault()?.Function.Name != null)
+                        {
                             MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Name = delta.ToolCalls?.FirstOrDefault()?.Function.Name;
+                        }
+                        MostRecentApiResult.Choices.FirstOrDefault().FinishReason = "function_call";
 
                     }
 
