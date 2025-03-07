@@ -94,7 +94,7 @@ namespace OpenAI_API.Chat
             if (model != null)
                 QwenRequestParameters.Model = model;
             if (QwenRequestParameters.Model == null)
-                QwenRequestParameters.Model = Models.Model.ChatGPTTurbo;
+                QwenRequestParameters.Model = Models.Model.Qwen_25;
 
             _Messages = new List<ChatMessage>();
             _endpoint = endpoint;
@@ -448,6 +448,7 @@ namespace OpenAI_API.Chat
         {
             var req = new QwenChatRequest(QwenRequestParameters);
             req.Messages = _Messages.ToList();
+            
 
             StringBuilder responseStringBuilder = new StringBuilder();
             ChatMessageRole responseRole = null;
@@ -479,15 +480,58 @@ namespace OpenAI_API.Chat
                         responseStringBuilder.Append(deltaContent);
                         yield return deltaContent;
                     }
-                    else
+                    if (!setValue)
                     {
-                        if (!setValue)
-                        {
-                            MostRecentApiResult = res;
-                            setValue = true;
-                        }
+                        MostRecentApiResult = res;
+                        setValue = true;
                     }
 
+                }
+            }
+
+            if (responseRole != null && responseStringBuilder.Length > 0)
+            {
+                AppendMessage(responseRole, responseStringBuilder.ToString());
+            }
+        }
+
+        public async IAsyncEnumerable<string> StreamResponseEnumerableFromAliQwenChatbotAsync()
+        {
+            var req = new QwenChatRequest(QwenRequestParameters);
+            req.Messages = _Messages.ToList();
+
+
+            StringBuilder responseStringBuilder = new StringBuilder();
+            ChatMessageRole responseRole = null;
+            bool setValue = false;
+            MostRecentApiResult = null;
+            await foreach (var res in _endpoint.StreamChatEnumerableAsync(req))
+            {
+                if (!setValue)
+                {
+                    MostRecentApiResult = res;
+                    setValue = true;
+                }
+
+                if (res.Choices.FirstOrDefault()?.Delta is ChatMessage delta)
+                {
+                    if (delta.Role != null)
+                        responseRole = delta.Role;
+
+                    string deltaContent = delta.Content;
+                    responseStringBuilder.Append(deltaContent);
+                    if (delta.ToolCalls?.FirstOrDefault()?.Function != null && delta.ToolCalls?.FirstOrDefault()?.Function.Arguments != null )
+                    {
+                        if (MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall == null)
+                            MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = new FunctionCall();
+
+                        MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Arguments += delta.ToolCalls?.FirstOrDefault()?.Function.Arguments;
+                        if(delta.ToolCalls?.FirstOrDefault()?.Function.Name != null)
+                            MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall.Name = delta.ToolCalls?.FirstOrDefault()?.Function.Name;
+
+                    }
+
+                    yield return deltaContent;
                 }
             }
 
@@ -505,7 +549,7 @@ namespace OpenAI_API.Chat
         {
             var req = new QwenChatRequest(QwenRequestParameters);
             req.Messages = _Messages.ToList();
-
+            
             StringBuilder responseStringBuilder = new StringBuilder();
             ChatMessageRole responseRole = null;
             bool setValue = false;

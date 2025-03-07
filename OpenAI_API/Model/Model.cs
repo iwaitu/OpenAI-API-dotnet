@@ -174,7 +174,9 @@ namespace OpenAI_API.Models
         ///  Snapshot of gpt-4 from June 13th 2023. This model allows the use of function calling as well as more reliable steering via the system message.
         /// </summary>
         public static Model GPT4_0613 => new Model("gpt-4-0613") { OwnedBy = "openai" };
-        public static Model Qwen_25 => new Model("qwen25") { OwnedBy = "nngeo" };
+        public static Model Qwen_25 => new Model("qwen25") { OwnedBy = "ivilson" };
+
+        public static Model Qwen_plus => new Model("qwen-plus") { OwnedBy = "ivilson" };
         public static Model QwQ => new Model("qwq") { OwnedBy = "ivilson" };
         /// <summary>
         /// Gets more details about this Model from the API, specifically properties such as <see cref="OwnedBy"/> and permissions.
