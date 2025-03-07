@@ -556,7 +556,7 @@ namespace OpenAI_API.Chat
             var req = new QwenChatRequest(QwenRequestParameters);
             req.Messages = _Messages.ToList();
             
-            StringBuilder responseStringBuilder = new StringBuilder();
+            //StringBuilder responseStringBuilder = new StringBuilder();
             ChatMessageRole responseRole = null;
             bool setValue = false;
             MostRecentApiResult = null;
@@ -595,7 +595,17 @@ namespace OpenAI_API.Chat
                             yield return "";
                             continue;
                         }
-                        responseStringBuilder.Append(deltaContent);
+                        if (MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking)
+                        {
+
+                            MostRecentApiResult.Choices.FirstOrDefault().Delta.ReasoningContent += deltaContent;
+
+                        }
+                        else
+                        {
+                            MostRecentApiResult.Choices.FirstOrDefault().Delta.Content += deltaContent;
+                        }
+                         //responseStringBuilder.Append(deltaContent);
                         yield return deltaContent;
                     }
                     else

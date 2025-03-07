@@ -430,7 +430,7 @@ namespace OpenAI_Tests
                 {
                     Role = ChatMessageRole.Tool,
                     Name = conversation.MostRecentApiResult.Choices[0].Delta.FunctionCall.Name,
-                    Content = "python代码执行文件生成完成,已保存到远程服务器，下载地址为： http://test.com/123 "
+                    Content = "python代码执行文件生成完成,已保存到远程服务器，下载地址为： http://test.com/123 ,将下载地址告诉用户"
                 };
                 conversation.AppendMessage(toolMessage);
                 response += "思考中\n";
