@@ -589,6 +589,10 @@ namespace OpenAI_API.Chat
                             }
                             continue;
                         }
+                        {
+                            MostRecentApiResult.Choices.FirstOrDefault().Delta.FunctionCall = null;
+                            MostRecentApiResult.Choices.FirstOrDefault().FinishReason = "stop";
+                        }
                         if(deltaContent == "</think>")
                         {
                             MostRecentApiResult.Choices.FirstOrDefault().Delta.Thinking = false;
